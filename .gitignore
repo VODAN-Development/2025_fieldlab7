@@ -1,0 +1,2 @@
+# Include the files and directory paths here that should not be commited to the GitHub
+# Mainly for cache files, secrets etc.
