@@ -1,0 +1,53 @@
+{
+  "organizations": {
+    "SORD": {
+      "name": "SORD",
+      "type": "sparql",
+      "endpoint_url": "http://localhost:3030/sord/sparql",
+      "auth_method": "none",
+      "status": "unknown",
+      "topics": ["sexual_violence"],
+      "description": "Local Apache Jena Fuseki endpoint for the Sudan Organized Rape Dataset (SORD) – FieldLab 2, providing aggregated RDF data on sexual violence incidents in Sudan."
+    },
+
+    "DPO": {
+      "name": "DPO",
+      "type": "sparql",
+      "endpoint_url": "https://mock-dpo.org/sparql",
+      "auth_method": "token",
+      "status": "unknown",
+      "topics": ["health"],
+      "description": "Organization providing health-related datasets"
+    },
+
+    "EEPA": {
+      "name": "EEPA",
+      "type": "sparql",
+      "endpoint_url": "https://mock-eepa.org/sparql",
+      "auth_method": "basic",
+      "status": "unknown",
+      "topics": ["sexual_violence", "human_trafficking"],
+      "description": "Organization providing sensitive human rights data"
+    },
+
+    "Sanctuary_A": {
+      "name": "Sanctuary A",
+      "type": "sparql",
+      "endpoint_url": "https://mock-sanctuary.org/sparql",
+      "auth_method": "oauth",
+      "status": "unknown",
+      "topics": ["refugee"],
+      "description": "Shelter and case data"
+    },
+    
+    "SolidPods": {
+      "name": "Solid Pod Network",
+      "type": "federation",
+      "endpoint_url": "https://mock-comunica.org/query",
+      "auth_method": "delegated",
+      "status": "unknown",
+      "topics": ["refugee", "human_trafficking", "sexual_violence", "health"],
+      "description": "Federated access to Solid Pods via Comunica"
+    }
+  }
+}

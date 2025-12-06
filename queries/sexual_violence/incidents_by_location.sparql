@@ -1,0 +1,9 @@
+PREFIX sord: <http://fieldlab2.org/ontology/sord#>
+
+SELECT ?location (COUNT(?i) AS ?count)
+WHERE {
+  ?i sord:hasLocation ?loc .
+  ?loc sord:locationName ?location .
+}
+GROUP BY ?location
+ORDER BY DESC(?count)

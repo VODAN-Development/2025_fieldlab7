@@ -1,0 +1,9 @@
+PREFIX sord: <http://fieldlab2.org/ontology/sord#>
+
+SELECT ?affiliation (COUNT(?i) AS ?count)
+WHERE {
+  ?i sord:hasPerpetrator ?p .
+  ?p sord:affiliation ?affiliation .
+}
+GROUP BY ?affiliation
+ORDER BY DESC(?count)

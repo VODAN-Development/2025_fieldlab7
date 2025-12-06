@@ -1,0 +1,10 @@
+PREFIX sord: <http://fieldlab2.org/ontology/sord#>
+
+SELECT ?gender (SUM(?n) AS ?totalVictims)
+WHERE {
+  ?i sord:hasVictim ?v .
+  ?v sord:gender ?gender ;
+     sord:numberOfVictims ?n .
+}
+GROUP BY ?gender
+ORDER BY DESC(?totalVictims)

@@ -1,0 +1,8 @@
+PREFIX sord: <http://fieldlab2.org/ontology/sord#>
+
+SELECT ?type (COUNT(?i) AS ?count)
+WHERE {
+  ?i a sord:SexualViolenceIncident ;
+     sord:incidentType ?type .
+}
+GROUP BY ?type
