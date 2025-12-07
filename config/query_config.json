@@ -34,5 +34,23 @@
     "query_file": "queries/sexual_violence/perpetrator_affiliations.sparql",
     "allowed_endpoints": ["SORD"],
     "visualization": "bar"
+  }, 
+
+  "fl_incidents_by_country": {
+    "title": "Mock Incidents by Country",
+    "topic": "sexual_violence",
+    "description": "Counts mock incidents grouped by country (FL mock).",
+    "query_file": "queries/fl_mock/FLmock_incidents_by_country.sparql",
+    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "visualization": "bar"
+  },
+
+  "fl_incidents_by_type": {
+    "title": "Mock Incidents by Type",
+    "topic": "sexual_violence",
+    "description": "Counts mock incidents grouped by incident type (FL mock).",
+    "query_file": "queries/fl_mock/FLmock_incidents_by_type.sparql",
+    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "visualization": "bar"
   }
 }

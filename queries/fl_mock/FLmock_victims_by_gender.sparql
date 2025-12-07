@@ -1,0 +1,9 @@
+PREFIX ex: <http://example.org/hds#>
+
+SELECT ?gender (COUNT(?victim) AS ?totalVictims)
+WHERE {
+  ?victim a ex:Victim ;
+          ex:gender ?gender .
+}
+GROUP BY ?gender
+ORDER BY DESC(?totalVictims)

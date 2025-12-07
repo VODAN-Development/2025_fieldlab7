@@ -1,8 +1,15 @@
+import httpx
+import os
 import json
 import time
+import pandas as pd
 from pathlib import Path
+from typing import List, Optional
 from SPARQLWrapper import SPARQLWrapper, JSON
-import httpx
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 # Load registry files
 BASE_DIR = Path(__file__).resolve().parent
@@ -28,10 +35,18 @@ def load_query_file(filepath):
 
 # SPARQL execution
 
-def execute_sparql(endpoint_url, query, headers=None):
+def execute_sparql(endpoint_url, query, username=None, password=None, headers=None):
+    """
+    Execute a SPARQL query against the given endpoint URL.
+    If username/password are provided, use HTTP Basic authentication.
+    """
     sparql = SPARQLWrapper(endpoint_url)
     sparql.setQuery(query)
     sparql.setReturnFormat(JSON)
+
+    # Basic Auth if credentials are provided
+    if username and password:
+        sparql.setCredentials(username, password)
 
     if headers:
         for key, value in headers.items():
@@ -45,7 +60,12 @@ def execute_sparql(endpoint_url, query, headers=None):
 
 # Run routine query
 
-def run_routine_query(query_id):
+def run_routine_query(query_id: str, endpoints_to_use: Optional[List[str]] = None):
+    """
+    Execute a routine query defined in query_config.json.
+    If endpoints_to_use is provided, only those endpoints are queried.
+    Otherwise, the default 'allowed_endpoints' list from the query config is used.
+    """
     queries = load_queries()
     endpoints = load_endpoints()
 
@@ -55,21 +75,100 @@ def run_routine_query(query_id):
     query_cfg = queries[query_id]
     query = load_query_file(query_cfg["query_file"])
 
+    # Default endpoints from config
+    allowed = query_cfg.get("allowed_endpoints", [])
+
+    # If API/UI passed a subset, use that; otherwise use defaults
+    target_endpoints = endpoints_to_use or allowed
+
     results = {}
 
-    for org_name in query_cfg["allowed_endpoints"]:
-        org = endpoints[org_name]
+    for org_name in target_endpoints:
+        org = endpoints.get(org_name)
+        if not org:
+            # In case config is inconsistent or unknown id is passed
+            results[org_name] = {"error": "Unknown endpoint"}
+            continue
+
         url = org["endpoint_url"]
+        auth_method = org.get("auth_method", "none")
+
+        username = None
+        password = None
+
+        if auth_method == "basic":
+            username = org.get("username")
+            password_env = org.get("password_env")
+            password = os.environ.get(password_env) if password_env else None
+
+            if not username or not password:
+                results[org_name] = {
+                    "error": (
+                        f"Missing credentials for endpoint {org_name}. "
+                        f"Check 'username' or the '{password_env}' environment variable."
+                    )
+                }
+                continue
 
         print(f"Querying {org_name}...")
 
-        result = execute_sparql(url, query)
+        result = execute_sparql(url, query, username=username, password=password)
         results[org_name] = result
 
     return results
 
 
+def merge_count_results(results_dict, group_var="country"):
+    """
+    Merge SPARQL COUNT results from multiple endpoints.
+    Expects each endpoint result to have bindings like:
+        ?<group_var>  ?count
+    Returns a pandas DataFrame with columns [group_var, total_count].
+    """
+    combined = {}
+
+    for endpoint, result in results_dict.items():
+        if not isinstance(result, dict):
+            print(f"Warning: result for {endpoint} is not a dict.")
+            continue
+
+        if "error" in result:
+            print(f"Warning: {endpoint} returned an error: {result['error']}")
+            continue
+
+        bindings = result.get("results", {}).get("bindings", [])
+        if not bindings:
+            print(f"Info: {endpoint} returned no rows.")
+            continue
+
+        for row in bindings:
+            if group_var not in row or "count" not in row:
+                print(f"Warning: missing '{group_var}' or 'count' in row from {endpoint}: {row}")
+                continue
+
+            key = row[group_var]["value"]
+            try:
+                count = int(row["count"]["value"])
+            except (ValueError, KeyError):
+                print(f"Warning: bad count value in row from {endpoint}: {row}")
+                continue
+
+            combined[key] = combined.get(key, 0) + count
+
+    # Always return a DataFrame with expected columns, even if empty
+    df = pd.DataFrame(
+        [{"country": k, "total_count": v} for k, v in combined.items()],
+        columns=["country", "total_count"]
+    )
+
+    return df
+
+
 # Example test run
 if __name__ == "__main__":
-    output = run_routine_query("victims_by_gender")
-    print(output)
+    '''output = run_routine_query("victims_by_gender")
+    print(output)'''
+
+    print("Testing multi-endpoint mock query...")
+    output = run_routine_query("FLmock_incidents_by_country")
+    print(json.dumps(output, indent=2))

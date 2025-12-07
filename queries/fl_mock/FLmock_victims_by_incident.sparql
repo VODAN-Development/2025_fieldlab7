@@ -1,0 +1,14 @@
+PREFIX ex: <http://example.org/hds#>
+
+SELECT ?incidentID ?country ?victimID ?age ?gender
+WHERE {
+  ?incident a ex:Incident ;
+            ex:incidentID ?incidentID ;
+            ex:country ?country .
+  ?victim a ex:Victim ;
+          ex:victimID ?victimID ;
+          ex:age ?age ;
+          ex:gender ?gender ;
+          ex:isVictimOf ?incident .
+}
+ORDER BY ?incidentID

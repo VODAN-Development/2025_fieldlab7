@@ -1,0 +1,12 @@
+PREFIX ex: <http://example.org/hds#>
+
+SELECT ?country (COUNT(?incident) AS ?count)
+WHERE {
+  ?incident a ex:Incident ;
+            ex:location ?location .
+
+  # Your TTL uses combined location text like: "Port Sudan, Sudan"
+  BIND(STRAFTER(?location, ", ") AS ?country)
+}
+GROUP BY ?country
+ORDER BY DESC(?count)
