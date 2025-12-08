@@ -1,0 +1,21 @@
+{
+  "users": [
+    {
+      "username": "Jerry",
+      "password": "jerrybhairocks@123",
+      "role": "Developer",
+      "display_name": "Jerry Developer"
+    },
+    {
+      "username": "admin",
+      "password": "admin@admin@123",
+      "role": "admin",
+      "display_name": "Admin"
+    }
+  ],
+  "jwt": {
+    "secret": "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET",
+    "algo": "HS256",
+    "expiry_minutes": 360
+  }
+}

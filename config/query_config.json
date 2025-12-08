@@ -41,7 +41,7 @@
     "topic": "sexual_violence",
     "description": "Counts mock incidents grouped by country (FL mock).",
     "query_file": "queries/fl_mock/FLmock_incidents_by_country.sparql",
-    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "allowed_endpoints": ["SORD", "FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
     "visualization": "bar"
   },
 

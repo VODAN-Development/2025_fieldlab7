@@ -57,7 +57,7 @@
       "auth_method": "basic",
       "username": "Admins",
       "password_env": "mockPasswordFL1",
-      "status": "unknown",
+      "status": "online",
       "topics": ["sexual_violence", "human_trafficking"],
       "description": "Mock AllegroGraph endpoint with fl1-based incident/victim/perpetrator data."
     }, 
@@ -69,7 +69,7 @@
       "auth_method": "basic",
       "username": "Admins",
       "password_env": "mockPasswordFL2",
-      "status": "unknown",
+      "status": "online",
       "topics": ["sexual_violence", "human_trafficking"],
       "description": "Mock AllegroGraph endpoint with fl2-based incident/victim/perpetrator data."
     }, 
@@ -81,7 +81,7 @@
       "auth_method": "basic",
       "username": "Admins",
       "password_env": "mockPasswordFL3",
-      "status": "unknown",
+      "status": "online",
       "topics": ["sexual_violence", "human_trafficking"],
       "description": "Mock AllegroGraph endpoint with fl3-based incident/victim/perpetrator data."
     }
