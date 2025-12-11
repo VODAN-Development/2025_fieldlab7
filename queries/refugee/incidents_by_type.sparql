@@ -1,0 +1,9 @@
+PREFIX hds: <http://example.org/hds#>
+
+SELECT ?type (COUNT(*) AS ?count)
+WHERE {
+  ?incident a hds:Incident ;
+            hds:type ?type .
+}
+GROUP BY ?type
+ORDER BY DESC(?count)

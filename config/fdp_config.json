@@ -1,0 +1,49 @@
+{
+  "catalogs": [
+    {
+      "id": "fieldlab7_catalog",
+      "title": "FieldLab 7 Federated Catalogue",
+      "publisher": "FieldLab 7",
+      "description": "Federated catalogue of refugee protection and trafficking datasets used in the DSIP project.",
+      "datasets": ["fl1b_refugee_incidents", "fl7_mock_incidents"]
+    }
+  ],
+  "datasets": [
+    {
+      "id": "fl1b_refugee_incidents",
+      "title": "Refugee Protection Incidents (FieldLab 1B)",
+      "theme": "Refugee Data",
+      "endpoint": "DPO",
+      "topic": "refugee",
+      "description": "CDM-aligned incident-level records about refugee protection incidents exposed by FieldLab 1B.",
+      "license": "Demo / educational use only",
+      "queries": ["list_all_incidents", "refugee_incidents_by_type"]
+    },
+    {
+      "id": "fl7_mock_incidents",
+      "title": "Mock Incidents (FieldLab 7)",
+      "theme": "Sexual Violence",
+      "endpoint": "FL1_MOCK, FL2_MOCK, FL3_MOCK",
+      "topic": "sexual_violence",
+      "description": "Synthetic CDM-style incidents used for testing federation and visualisation.",
+      "license": "Demo data (no real persons)",
+      "queries": ["fl_incidents_by_country"]
+    }
+  ],
+  "distributions": [
+    {
+      "id": "fl1b_refugee_incidents_sparql",
+      "dataset": "fl1b_refugee_incidents",
+      "access_service": "DPO",
+      "format": "SPARQL 1.1 endpoint",
+      "access_url": "https://ag1klf98suhepl85.allegrograph.cloud/repositories/fieldlab1"
+    },
+    {
+      "id": "fl7_mock_incidents_sparql",
+      "dataset": "fl7_mock_incidents",
+      "access_service": "FL1_MOCK, FL2_MOCK, FL3_MOCK",
+      "format": "SPARQL 1.1 endpoint",
+      "access_url": "http://localhost:3030/mock" 
+    }
+  ]
+}

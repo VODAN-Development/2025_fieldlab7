@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 from SPARQLWrapper import SPARQLWrapper, JSON
 from dotenv import load_dotenv
+from endpoint_health_check import health_check
 
 
 load_dotenv()
@@ -21,9 +22,37 @@ def load_queries():
     with open(QUERY_CONFIG_PATH) as q:
         return json.load(q)
 
-def load_endpoints():
+'''def load_endpoints():
     with open(ENDPOINT_CONFIG_PATH) as e:
-        return json.load(e)["organizations"]
+        return json.load(e)["organizations"]'''
+
+def load_endpoints():
+    """
+    Load endpoint configs and overlay dynamic health status.
+
+    - Base data (name, endpoint_url, auth_method, topics, etc.) comes from
+      config/endpoints_config.json.
+    - Live status (online/offline/degraded/error) is computed via health_check().
+    """
+    with open(ENDPOINT_CONFIG_PATH, encoding="utf-8") as e:
+        orgs = json.load(e)["organizations"]
+
+    # Try to compute live statuses; if anything goes wrong, fall back to config status
+    dynamic_status = {}
+    try:
+        dynamic_status = health_check()
+    except Exception as e:
+        print(f"Warning: health_check failed, using static status from config. Error: {e}")
+
+    for name, cfg in orgs.items():
+        live = dynamic_status.get(name)
+        if live and "status" in live:
+            cfg["status"] = live["status"]
+        else:
+            # keep existing or default to 'unknown'
+            cfg["status"] = cfg.get("status", "unknown")
+
+    return orgs
 
 
 # Load SPARQL file
@@ -97,19 +126,31 @@ def run_routine_query(query_id: str, endpoints_to_use: Optional[List[str]] = Non
         password = None
 
         if auth_method == "basic":
-            username = org.get("username")
+            # Prefer environment variables
+            username_env = org.get("username_env")
             password_env = org.get("password_env")
+
+            username = os.environ.get(username_env) if username_env else org.get("username")
             password = os.environ.get(password_env) if password_env else None
 
             if not username or not password:
+                msg_parts = []
+                if username_env:
+                    msg_parts.append(f"'{username_env}'")
+                else:
+                    msg_parts.append("'username' in endpoints_config.json")
+
+                if password_env:
+                    msg_parts.append(f"'{password_env}'")
+
                 results[org_name] = {
                     "error": (
                         f"Missing credentials for endpoint {org_name}. "
-                        f"Check 'username' or the '{password_env}' environment variable."
+                        f"Check " + " and ".join(msg_parts) + "."
                     )
                 }
                 continue
-
+        
         print(f"Querying {org_name}...")
 
         result = execute_sparql(url, query, username=username, password=password)

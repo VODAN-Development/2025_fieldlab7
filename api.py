@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from jose import jwt
 from passlib.context import CryptContext
 
-from mainEngine import run_routine_query, load_queries
+from mainEngine import run_routine_query, load_queries, load_endpoints  
 
 app = FastAPI(title="Federated Lighthouse API (Auth + SPARQL)")
 
@@ -176,3 +176,17 @@ def run_query(req: RunQueryRequest, current_user: Dict[str, Any] = Depends(get_c
         raise HTTPException(status_code=500, detail=results["error"])
 
     return results
+
+@app.get("/endpoints")
+def list_endpoints():
+    """
+    Return all configured endpoints with dynamic status.
+    """
+    endpoints = load_endpoints()
+    # convert to a list with id field, similar to /queries
+    out = []
+    for eid, cfg in endpoints.items():
+        cfg_copy = cfg.copy()
+        cfg_copy["id"] = eid
+        out.append(cfg_copy)
+    return out

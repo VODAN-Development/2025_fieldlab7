@@ -7,6 +7,7 @@ import altair as alt
 from pathlib import Path
 
 from mainEngine import merge_count_results
+from endpoint_health_check import health_check
 
 # ---------- App config ----------
 st.set_page_config(page_title="Federated Lighthouse Dashboard", layout="wide")
@@ -101,19 +102,46 @@ def run_query(query_id: str, endpoints: list | None = None):
     return resp.json()
 
 
+@st.cache_data(ttl=60)
 def load_organizations():
+    """
+    Load endpoint metadata from config and overlay dynamic health status.
+
+    - Base data (name, type, topics, description, etc.) comes from
+      config/endpoints_config.json.
+    - Live status (online/offline/degraded/error) comes from endpoint_health_check.health_check().
+    """
+    # 1) Load static config
     if ENDPOINTS_CONFIG_PATH.exists():
         with ENDPOINTS_CONFIG_PATH.open("r", encoding="utf-8") as f:
             cfg = json.load(f)
-        return cfg.get("organizations", {})
     else:
-        # fallback to old path
         try:
             with open("endpoints_config.json", "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-            return cfg.get("organizations", {})
         except Exception:
-            return {}
+            cfg = {}
+
+    orgs = cfg.get("organizations", {})
+
+    # 2) Fetch live health info
+    try:
+        status_map = health_check()   # returns {"DPO": {...}, "FL1_MOCK": {...}, ...}
+    except Exception as e:
+        # If health check fails for some reason, just return static config
+        print(f"Warning: health_check failed: {e}")
+        return orgs
+
+    # 3) Overlay status onto each org
+    for name, data in orgs.items():
+        live = status_map.get(name)
+        if live and "status" in live:
+            data["status"] = live["status"]
+        else:
+            # keep existing or default to 'unknown'
+            data["status"] = data.get("status", "unknown")
+
+    return orgs
 
 
 def safe_rerun():
@@ -492,31 +520,62 @@ def dashboard_view():
             if st.button("Run Query"):
                 with st.spinner("Running query..."):
                     try:
-                        result = run_query(selected_query["id"], selected_eps)
-                        df = merge_count_results(result, group_var="country")
+                        query_id = selected_query["id"]
+                        result = run_query(query_id, selected_eps)
 
-                        if df.empty:
-                            st.warning("No results returned from any selected endpoint.")
+                        # 👉 Only use merge_count_results for the FL mock incidents-by-country query
+                        if query_id == "fl_incidents_by_country":
+                            df = merge_count_results(result, group_var="country")
+
+                            if df.empty:
+                                st.warning("No results returned from any selected endpoint.")
+                            else:
+                                st.subheader("Merged Results (Mock incidents by country)")
+                                st.dataframe(df)
+
+                                chart = (
+                                    alt.Chart(df)
+                                    .mark_bar()
+                                    .encode(
+                                        x="country:N",
+                                        y="total_count:Q",
+                                        tooltip=["country", "total_count"],
+                                    )
+                                    .properties(
+                                        title="Incidents by Country (Merged Across FL mock endpoints)"
+                                    )
+                                )
+                                st.altair_chart(chart, use_container_width=True)
+
                         else:
-                            st.subheader("Merged Results")
-                            st.dataframe(df)
+                            # For all other queries, just show the raw rows per endpoint
+                            st.subheader("Raw results")
 
-                            chart = (
-                                alt.Chart(df)
-                                .mark_bar()
-                                .encode(
-                                    x="country:N",
-                                    y="total_count:Q",
-                                    tooltip=["country", "total_count"]
-                                )
-                                .properties(
-                                    title="Incidents by Country (Merged Across Endpoints)"
-                                )
-                            )
-                            st.altair_chart(chart, use_container_width=True)
+                            if not result:
+                                st.warning("No results returned.")
+                            else:
+                                for endpoint, ep_result in result.items():
+                                    st.markdown(f"**Endpoint:** {endpoint}")
+
+                                    if isinstance(ep_result, dict) and "error" in ep_result:
+                                        st.error(f"Error from {endpoint}: {ep_result['error']}")
+                                        continue
+
+                                    bindings = ep_result.get("results", {}).get("bindings", [])
+                                    if not bindings:
+                                        st.info(f"{endpoint}: no rows.")
+                                        continue
+
+                                    rows = [
+                                        {var: cell.get("value") for var, cell in b.items()}
+                                        for b in bindings
+                                    ]
+                                    df = pd.DataFrame(rows)
+                                    st.dataframe(df)
 
                     except Exception as e:
                         st.error(f"Error running query: {e}")
+
         else:
             st.info("No query selected or no queries available for the chosen topic.")
 

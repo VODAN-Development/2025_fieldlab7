@@ -1,0 +1,9 @@
+PREFIX hds: <http://example.org/hds#>
+
+SELECT ?incident ?type ?date
+WHERE {
+  ?incident a hds:Incident ;
+            hds:type ?type ;
+            hds:date ?date .
+}
+ORDER BY DESC(?date)

@@ -13,20 +13,24 @@
     "DPO": {
       "name": "DPO",
       "type": "sparql",
-      "endpoint_url": "https://mock-dpo.org/sparql",
-      "auth_method": "token",
+      "endpoint_url": "https://ag1jlq2yp82pfp35.allegrograph.cloud/repositories/fieldlab1/sparql",
+      "auth_method": "basic",
+      "username_env": "DPO_USERNAME",
+      "password_env": "DPO_PASSWORD",
       "status": "unknown",
-      "topics": ["health"],
-      "description": "Organization providing health-related datasets"
+      "topics": ["refugee"],
+      "description": "The dataset contains structured records of humanitarian incidents"
     },
 
     "EEPA": {
       "name": "EEPA",
       "type": "sparql",
-      "endpoint_url": "https://mock-eepa.org/sparql",
+      "endpoint_url": "https://ag1950eewddzjs9z.allegrograph.cloud/repositories/trafficking_repo/sparql",
       "auth_method": "basic",
+      "username_env": "EEPA_USERNAME",
+      "password_env": "EEPA_PASSWORD",
       "status": "unknown",
-      "topics": ["sexual_violence", "human_trafficking"],
+      "topics": ["human_trafficking"],
       "description": "Organization providing sensitive human rights data"
     },
 
@@ -55,10 +59,10 @@
       "type": "sparql",
       "endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL1/sparql",
       "auth_method": "basic",
-      "username": "Admins",
-      "password_env": "mockPasswordFL1",
-      "status": "online",
-      "topics": ["sexual_violence", "human_trafficking"],
+      "username_env": "FL7_USERNAME",
+      "password_env": "FL7_PASSWORD",
+      "status": "unknown",
+      "topics": ["sexual_violence"],
       "description": "Mock AllegroGraph endpoint with fl1-based incident/victim/perpetrator data."
     }, 
 
@@ -67,10 +71,10 @@
       "type": "sparql",
       "endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL2/sparql",
       "auth_method": "basic",
-      "username": "Admins",
-      "password_env": "mockPasswordFL2",
-      "status": "online",
-      "topics": ["sexual_violence", "human_trafficking"],
+      "username_env": "FL7_USERNAME",
+      "password_env": "FL7_PASSWORD",
+      "status": "unknown",
+      "topics": ["sexual_violence"],
       "description": "Mock AllegroGraph endpoint with fl2-based incident/victim/perpetrator data."
     }, 
 
@@ -79,10 +83,10 @@
       "type": "sparql",
       "endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL3/sparql",
       "auth_method": "basic",
-      "username": "Admins",
-      "password_env": "mockPasswordFL3",
-      "status": "online",
-      "topics": ["sexual_violence", "human_trafficking"],
+      "username_env": "FL7_USERNAME",
+      "password_env": "FL7_PASSWORD",
+      "status": "unknown",
+      "topics": ["sexual_violence"],
       "description": "Mock AllegroGraph endpoint with fl3-based incident/victim/perpetrator data."
     }
   }

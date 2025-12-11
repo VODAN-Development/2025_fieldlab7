@@ -41,7 +41,7 @@
     "topic": "sexual_violence",
     "description": "Counts mock incidents grouped by country (FL mock).",
     "query_file": "queries/fl_mock/FLmock_incidents_by_country.sparql",
-    "allowed_endpoints": ["SORD", "FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
     "visualization": "bar"
   },
 
@@ -52,5 +52,32 @@
     "query_file": "queries/fl_mock/FLmock_incidents_by_type.sparql",
     "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
     "visualization": "bar"
+  },
+
+  "list_all_incidents": {
+    "title": "List all refugee incidents",
+    "topic": "refugee",
+    "description": "Counts all refugee incidents.",
+    "query_file": "queries/refugee/list_all_incidents.sparql",
+    "allowed_endpoints": ["DPO"],
+    "visualization": "bar"
+  },
+
+  "refugee_incidents_by_type": {
+  "title": "Refugee incidents by type",
+  "topic": "refugee",
+  "description": "Lists all refugee incidents by type.",
+  "query_file": "queries/refugee/incidents_by_type.sparql",
+  "allowed_endpoints": ["DPO"],
+  "visualization": "bar"
+  },
+
+  "incidents_by_origin_dest": {
+  "title": "List incidents with departure & destination",
+  "topic": "human_trafficking",
+  "description": "List all human trafficking incidents with departure & destination.",
+  "query_file": "queries/human_trafficking/incidents_by_origin_dest.sparql",
+  "allowed_endpoints": ["EEPA"],
+  "visualization": "bar"
   }
 }
