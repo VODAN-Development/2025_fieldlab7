@@ -9,9 +9,6 @@ from pathlib import Path
 from mainEngine import merge_count_results
 from endpoint_health_check import health_check
 
-# ---------- App config ----------
-st.set_page_config(page_title="Federated Lighthouse Dashboard", layout="wide")
-
 # session defaults
 if "user_menu_select" not in st.session_state:
     st.session_state["user_menu_select"] = "👤"
@@ -25,14 +22,32 @@ if "token" not in st.session_state:
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
+if "status_refresh_key" not in st.session_state:
+    st.session_state["status_refresh_key"] = 0
+
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
+BASE_DIR = Path(__file__).resolve().parent
 LOGIN_URL = f"{API_BASE}/login"
 QUERIES_URL = f"{API_BASE}/queries"
 RUN_QUERY_URL = f"{API_BASE}/run_query"
 
+STYLES_PATH = BASE_DIR / "assets" / "styles.css"
+#STYLES_PATH = Path("assets") / "styles.css"
 ENDPOINTS_CONFIG_PATH = Path("config") / "endpoints_config.json"
+FDP_CONFIG_PATH = Path("config") / "fdp_config.json"
 
+
+def load_css():
+    if STYLES_PATH.exists():
+        st.markdown(f"<style>{STYLES_PATH.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
+    else:
+        st.error(f"styles.css not found at: {STYLES_PATH}")
+
+
+# ---------- App config ----------
+st.set_page_config(page_title="Federated Lighthouse Dashboard", layout="wide")
+#load_css()
 
 # ---------- Auth helpers ----------
 def find_token():
@@ -43,6 +58,13 @@ def auth_headers():
     token = find_token()
     if token:
         return {"Authorization": f"Bearer {token}"}
+    return {}
+
+@st.cache_data(ttl=60)
+def load_fdp_configs():
+    if FDP_CONFIG_PATH.exists():
+        with FDP_CONFIG_PATH.open("r", encoding="utf-8") as f:
+            return json.load(f)
     return {}
 
 
@@ -58,6 +80,7 @@ def do_login(username: str, password: str):
             "display_name": data.get("display_name", data.get("username"))
         }
         st.session_state["logged_in"] = True
+        st.session_state["just_logged_in"] = True
         return True, None
     except requests.HTTPError as he:
         try:
@@ -102,52 +125,25 @@ def run_query(query_id: str, endpoints: list | None = None):
     return resp.json()
 
 
-@st.cache_data(ttl=60)
-def load_organizations():
-    """
-    Load endpoint metadata from config and overlay dynamic health status.
-
-    - Base data (name, type, topics, description, etc.) comes from
-      config/endpoints_config.json.
-    - Live status (online/offline/degraded/error) comes from endpoint_health_check.health_check().
-    """
-    # 1) Load static config
+@st.cache_data(ttl=300)
+def load_organizations_static():
+    """Load only static endpoint metadata from config (fast, no network)."""
     if ENDPOINTS_CONFIG_PATH.exists():
         with ENDPOINTS_CONFIG_PATH.open("r", encoding="utf-8") as f:
             cfg = json.load(f)
     else:
-        try:
-            with open("endpoints_config.json", "r", encoding="utf-8") as f:
-                cfg = json.load(f)
-        except Exception:
-            cfg = {}
+        cfg = {}
+    return cfg.get("organizations", {})
 
-    orgs = cfg.get("organizations", {})
-
-    # 2) Fetch live health info
-    try:
-        status_map = health_check()   # returns {"DPO": {...}, "FL1_MOCK": {...}, ...}
-    except Exception as e:
-        # If health check fails for some reason, just return static config
-        print(f"Warning: health_check failed: {e}")
-        return orgs
-
-    # 3) Overlay status onto each org
-    for name, data in orgs.items():
-        live = status_map.get(name)
-        if live and "status" in live:
-            data["status"] = live["status"]
-        else:
-            # keep existing or default to 'unknown'
-            data["status"] = data.get("status", "unknown")
-
-    return orgs
+@st.cache_data(ttl=60)
+def load_health_status_map(_refresh_key: int):
+    """Run live health checks (slow, network). Cache for 60s."""
+    return health_check()
 
 
 def safe_rerun():
     time.sleep(0.1)
     st.rerun()
-
 
 # ---------- UI components ----------
 def top_navbar():
@@ -167,54 +163,12 @@ def top_navbar():
         return
 
     with col_logout:
-        st.markdown(
-            """
-            <style>
-            /* Style ALL Streamlit buttons */
-            div.stButton > button {
-                background-color: #facc15 !important;   /* yellow */
-                color: #111827 !important;               /* very dark gray (almost black) */
-                font-weight: 800 !important;             /* extra bold */
-                font-size: 1rem !important;              /* bigger text */
-                border: 1px solid #eab308 !important;
-                padding: 0.45rem 1rem !important;
-                border-radius: 0.45rem !important;
-                box-shadow: 0 0 10px rgba(234, 179, 8, 0.40);
-            }
-
-            div.stButton > button:hover {
-                background-color: #fbbf24 !important;
-                box-shadow: 0 0 14px rgba(250, 204, 21, 0.75);
-                color: #000000 !important;               /* pure black on hover */
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-
-        if st.button("⏻ Logout"):
+        if st.button("⏻ Logout", key="logout_btn", type="primary"):
             do_logout()
 
 
 
 def login_view():
-    # Page title not at the very top, we’ll use custom layout instead
-    st.markdown(
-        """
-        <style>
-        /* Make main background dark-ish (optional) */
-        .stApp {
-            background-color: #0e1117;
-        }
-        /* Use more of the vertical space */
-        .block-container {
-        padding-top: 20vh;
-        padding-bottom: 12vh;
-    }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
 
     # Two big columns: left for logo, right for login card
     spacer_left, col_logo, col_card, spacer_right = st.columns([1, 1.1, 1.1, 1])
@@ -234,17 +188,9 @@ def login_view():
         st.write("")  # spacer to move card down a bit
         st.markdown(
             """
-            <div style="
-                background-color: #111827;
-                padding: 2.0rem 2.0rem 1.5rem 2.0rem;
-                border-radius: 0.75rem;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.45);
-                color: #e5e7eb;
-                ">
-                <h3 style="margin-top: 0; margin-bottom: 0.5rem;">Federated Lighthouse – Login</h3>
-                <p style="font-size: 0.9rem; color:#9ca3af; margin-bottom: 1.5rem;">
-                    Please log in to use the dashboard.
-                </p>
+            <div class="login-card">
+                <h3>Federated Lighthouse – Login</h3>
+                <p>Please log in to use the dashboard.</p>
             """,
             unsafe_allow_html=True,
         )
@@ -264,11 +210,20 @@ def login_view():
             if ok:
                 st.success("Login successful.")
                 safe_rerun()
+                st.stop() 
             else:
                 st.error(f"Login failed: {err}")
 
 
 def dashboard_view():
+    # ---- Post-login transition rerun (prevents old login UI lingering during slow loads)
+    if st.session_state.get("just_logged_in", False):
+        st.session_state["just_logged_in"] = False
+        top_navbar()
+        st.info("Preparing dashboard…")
+        safe_rerun()
+        st.stop()
+    
     top_navbar()
     st.markdown("---")
 
@@ -277,103 +232,8 @@ def dashboard_view():
         safe_rerun()
         return
     
-    # Card + avatar + status-dot styling
-    st.markdown(
-        """
-        <style>
-        /* Page background (dashboard only) */
-        .stApp {
-            background-color: #0e1117;  /* dark charcoal / almost black */
-        }
-
-        /* Generic card used in left column */
-        .fl-card {
-            background-color: #0b1220;          /* slightly lighter than page */
-            padding: 1rem 1.25rem;
-            border-radius: 1rem;                /* squircle corners */
-            border: 1px solid #1f2937;          /* subtle border */
-            margin-bottom: 1.1rem;              /* space between cards */
-            box-shadow: 0 10px 22px rgba(0,0,0,0.65);  /* deeper shadow */
-        }
-        .fl-card h4, .fl-card h3, .fl-card h2, .fl-card h1, .fl-card h5 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-        }
-
-        /* Shiny status dots */
-        .status-dot {
-            display: inline-block;
-            width: 0.7rem;
-            height: 0.7rem;
-            border-radius: 9999px;
-            margin-right: 0.4rem;
-        }
-
-        /* Online: brighter + pulsing */
-        .status-online {
-            background: #22c55e;
-            box-shadow: 0 0 12px rgba(34, 197, 94, 1);
-            animation: pulse-green 1.4s ease-in-out infinite;
-        }
-
-        /* Other states: brighter shine but no animation */
-        .status-unknown {
-            background: #f97373;
-            box-shadow: 0 0 10px rgba(248, 113, 113, 0.95);
-        }
-        .status-offline, .status-error {
-            background: #dc2626;
-            box-shadow: 0 0 10px rgba(220, 38, 38, 0.95);
-        }
-        .status-degraded {
-            background: #eab308;
-            box-shadow: 0 0 10px rgba(234, 179, 8, 0.95);
-        }
-
-        /* Pulsing animation for online endpoints */
-        @keyframes pulse-green {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
-            }
-            50% {
-                transform: scale(1.25);
-                box-shadow: 0 0 18px rgba(34, 197, 94, 1);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
-            }
-        }
-
-        /* User avatar + header */
-        .user-profile-header {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 0.5rem;
-        }
-        .user-avatar {
-            width: 2.1rem;
-            height: 2.1rem;
-            border-radius: 9999px;
-            background: linear-gradient(135deg, #1f2937, #4b5563);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #e5e7eb;
-            box-shadow: 0 0 10px rgba(0,0,0,0.7);
-        }
-        .user-profile-header-title {
-            font-weight: 600;
-            font-size: 1.05rem;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    if "selected_org" not in st.session_state:
+        st.session_state.selected_org = None
 
 
     left_col, center_col, right_col = st.columns([3, 5, 4])
@@ -413,7 +273,7 @@ def dashboard_view():
         topic_labels = list(topic_label_to_key.keys())
 
         topic_label = st.selectbox(
-            "",
+            "Topic",
             topic_labels,
             index=0,
             label_visibility="collapsed",
@@ -426,9 +286,45 @@ def dashboard_view():
 
         # ---- Organization Endpoints card ----
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
-        st.markdown("#### Organization Endpoints")
 
-        orgs = load_organizations()
+        # Header row: title (left) + button (right)
+        hdr_l, hdr_r = st.columns([6, 2], vertical_alignment="center")
+        with hdr_l:
+            st.markdown("#### Organization Endpoints")
+        with hdr_r:
+            # right-aligned button
+            st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
+            refresh_clicked = st.button("Refresh statuses", key="refresh_statuses", type="secondary")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # 1) Always load static org list instantly
+        orgs = load_organizations_static()
+
+        # trigger refresh action
+        if refresh_clicked:
+            st.session_state["status_refresh_key"] += 1
+            safe_rerun()
+
+        # 3) Apply live statuses only if refresh has been triggered at least once
+        status_map = None
+        if st.session_state["status_refresh_key"] > 0:
+            placeholder = st.empty()
+            with placeholder.container():
+                st.info("Checking endpoint statuses...")
+            status_map = load_health_status_map(st.session_state["status_refresh_key"])
+            placeholder.empty()
+
+            # overlay statuses onto orgs
+            for name, data in orgs.items():
+                live = status_map.get(name)
+                if live and "status" in live:
+                    data["status"] = live["status"]
+                else:
+                    data["status"] = data.get("status", "unknown")
+        else:
+            # No live check yet → show unknown (fast first render)
+            for name, data in orgs.items():
+                data["status"] = data.get("status", "unknown")
 
         # Filter orgs by selected topic
         filtered_orgs = {
@@ -436,6 +332,12 @@ def dashboard_view():
             for key, data in orgs.items()
             if selected_topic_key in data.get("topics", [])
         }
+
+        if st.session_state.selected_org is None and filtered_orgs:
+            for k, d in filtered_orgs.items():
+                if str(d.get("status", "unknown")).lower() == "online":
+                    st.session_state.selected_org = k
+                    break
 
         if filtered_orgs:
             for key, data in filtered_orgs.items():
@@ -451,11 +353,24 @@ def dashboard_view():
                 else:
                     status_class = "status-unknown"
 
-                st.markdown(
-                    f"<span class='status-dot {status_class}'></span>"
-                    f" <strong>{key}</strong> ({data.get('type', 'unknown')}) – status: {raw_status}",
-                    unsafe_allow_html=True,
-                )
+                # clickable organization row
+                row_dot, row_btn = st.columns([0.06, 0.94], gap="small")
+
+                with row_dot:
+                    st.markdown(f"<span class='status-dot {status_class}'></span>", unsafe_allow_html=True)
+
+                with row_btn:
+                    is_selected = (st.session_state.selected_org == key)
+                    label = f"✅ {key} ({data.get('type', 'unknown')}) – status: {raw_status}" if is_selected else \
+                            f"{key} ({data.get('type', 'unknown')}) – status: {raw_status}"
+
+                    clicked = st.button(label, key=f"orgbtn_{key}", use_container_width=True, type="tertiary")
+
+                    if clicked:
+                        st.session_state.selected_org = key
+                        safe_rerun()
+
+
         else:
             st.write("No organizations available for this topic.")
 
@@ -464,11 +379,81 @@ def dashboard_view():
 
         # ---- FAIR Data Point card ----
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
-        st.markdown("#### FAIR Data Point (metadata)")
-        st.write("• Catalogues")
-        st.write("• Datasets (based on routine SPARQL queries)")
-        st.write("• Data distributions")
-        st.write("• Data dashboards")
+        
+        fdp_configs = load_fdp_configs()
+        selected_org = st.session_state.get("selected_org")
+
+        # Header row: title (left) + clear button (right)
+        hdr_l, hdr_r = st.columns([6, 2], vertical_alignment="center")
+        with hdr_l:
+            st.markdown("#### FAIR Data Point (metadata)")
+        with hdr_r:
+            st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
+            clear_clicked = st.button(
+                "Clear selection",
+                key="clear_org_selection",
+                type="secondary",
+                disabled=(not bool(selected_org)),
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if clear_clicked:
+            st.session_state.selected_org = None
+            safe_rerun()
+
+        if not selected_org:
+            st.info("Click an organization above to view its metadata.")
+        else:
+            org_meta = fdp_configs.get(selected_org)
+
+            if not org_meta:
+                st.warning(f"No FDP metadata found for '{selected_org}' in fdp_configs.json.")
+            else:
+                st.success(f"Showing metadata for: {selected_org}")
+
+                # Catalogues
+                cats = org_meta.get("catalogues", [])
+                st.markdown("**Catalogues**")
+                if not cats:
+                    st.caption("No catalogues.")
+                else:
+                    for c in cats:
+                        st.markdown(f"- **{c.get('title','(untitled)')}** — {c.get('description','')}".strip())
+
+                # Datasets
+                dsets = org_meta.get("datasets", [])
+                st.markdown("**Datasets**")
+                if not dsets:
+                    st.caption("No datasets.")
+                else:
+                    for d in dsets:
+                        st.markdown(f"- **{d.get('title','(untitled)')}**")
+                        if d.get("description"):
+                            st.caption(d["description"])
+                        if d.get("routine_queries"):
+                            st.markdown("  • Queries: " + ", ".join(f"`{q}`" for q in d["routine_queries"]))
+
+                # Distributions
+                dists = org_meta.get("distributions", [])
+                st.markdown("**Distributions**")
+                if not dists:
+                    st.caption("No distributions.")
+                else:
+                    for dist in dists:
+                        st.markdown(
+                            f"- {dist.get('format','')} | {dist.get('auth','')}  \n"
+                            f"  Access URL: `{dist.get('access_url','')}`"
+                        )
+
+                # Dashboards
+                boards = org_meta.get("dashboards", [])
+                st.markdown("**Dashboards**")
+                if not boards:
+                    st.caption("No dashboards.")
+                else:
+                    for b in boards:
+                        st.markdown(f"- {b.get('title','(untitled)')} (query: `{b.get('query_id','')}`)")
+
         st.markdown("</div>", unsafe_allow_html=True)
 
     # ---------- CENTER ----------
@@ -517,7 +502,10 @@ def dashboard_view():
                 disabled=True
             )
 
-            if st.button("Run Query"):
+            run_clicked = st.button("Run Query", key="run_query_btn", type="secondary")
+
+
+            if run_clicked:
                 with st.spinner("Running query..."):
                     try:
                         query_id = selected_query["id"]
@@ -589,8 +577,10 @@ def dashboard_view():
 
 
 def main():
+    load_css()
+
     # full login gate
-    if st.session_state.get("logged_in") and find_token():
+    if st.session_state.get("logged_in") or find_token():
         dashboard_view()
     else:
         login_view()

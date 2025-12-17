@@ -1,0 +1,164 @@
+
+/* Login view layout tweaks */
+.stApp {
+    background-color: #0e1117;
+}
+
+
+/* Page background (dashboard only) */
+.stApp {
+    background-color: #0e1117;  /* dark charcoal / almost black */
+}
+
+/* Generic card used in left column */
+.fl-card {
+    background-color: #0b1220;          /* slightly lighter than page */
+    padding: 1rem 1.25rem;
+    border-radius: 1rem;                /* squircle corners */
+    border: 1px solid #1f2937;          /* subtle border */
+    margin-bottom: 1.1rem;              /* space between cards */
+    box-shadow: 0 10px 22px rgba(0,0,0,0.65);  /* deeper shadow */
+}
+.fl-card h4, .fl-card h3, .fl-card h2, .fl-card h1, .fl-card h5 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+/* Shiny status dots */
+.status-dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 9999px;
+    margin-right: 0rem;
+}
+
+/* Online: brighter + pulsing */
+.status-online {
+    background: #22c55e;
+    box-shadow: 0 0 12px rgba(34, 197, 94, 1);
+    animation: pulse-green 1.4s ease-in-out infinite;
+}
+
+/* Other states: brighter shine but no animation */
+.status-unknown {
+    background: #f97373;
+    box-shadow: 0 0 10px rgba(248, 113, 113, 0.95);
+}
+.status-offline, .status-error {
+    background: #dc2626;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.95);
+}
+.status-degraded {
+    background: #eab308;
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.95);
+}
+
+/* Pulsing animation for online endpoints */
+@keyframes pulse-green {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+    }
+    50% {
+        transform: scale(1.25);
+        box-shadow: 0 0 18px rgba(34, 197, 94, 1);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(34, 197, 94, 0.8);
+    }
+}
+
+/* User avatar + header */
+.user-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+.user-avatar {
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #1f2937, #4b5563);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #e5e7eb;
+    box-shadow: 0 0 10px rgba(0,0,0,0.7);
+}
+.user-profile-header-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+        }
+
+
+/* Login card */
+.login-card {
+    background-color: #111827;
+    padding: 2.0rem 2.0rem 1.5rem 2.0rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    color: #e5e7eb;
+}
+
+.login-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.login-card p {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1.5rem;
+}
+
+
+/* ===== Streamlit button types (reliable) ===== */
+
+/* PRIMARY (Logout) */
+div.stButton > button[kind="primary"] {
+  background-color: #ef4444 !important;
+  border: 1px solid #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+/* SECONDARY (Run Query / Refresh statuses / Clear selection) */
+div.stButton > button[kind="secondary"] {
+  background-color: #facc15 !important;
+  border: 1px solid #eab308 !important;
+  color: #111827 !important;
+  font-weight: 800 !important;
+}
+
+/* TERTIARY (Organization endpoints) */
+div.stButton > button[kind="tertiary"] {
+  background-color: #0F766E !important;
+  border: 1px solid #2DD4BF !important;
+  color: #ECFEFF !important;
+
+  font-weight: 700 !important;
+  font-size: 1.02rem !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+
+  padding-left: 0.5rem !important;
+  margin-left: -0.55rem !important;
+  width: calc(100% + 0.55rem) !important;
+}
+
+div.stButton > button[kind="tertiary"]:hover {
+  background-color: #14B8A6 !important;
+}
+
+/* Right-align buttons that sit in header rows */
+.hdr-btn-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+
