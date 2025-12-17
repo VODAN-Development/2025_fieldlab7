@@ -3,14 +3,23 @@
     {
       "username": "Jerry",
       "password": "jerrybhairocks@123",
-      "role": "Developer",
-      "display_name": "Jerry Developer"
+      "role": "admin",
+      "display_name": "Jerry Developer", 
+      "dashboard_access": "use"
     },
     {
       "username": "admin",
       "password": "admin@admin@123",
       "role": "admin",
-      "display_name": "Admin"
+      "display_name": "Admin", 
+      "dashboard_access": "use"
+    },
+    {
+      "username": "testuser1",
+      "password": "testuser@123",
+      "role": "user",
+      "display_name": "Test User 1", 
+      "dashboard_access": "use"
     }
   ],
   "jwt": {

@@ -121,25 +121,30 @@
 
 /* PRIMARY (Logout) */
 div.stButton > button[kind="primary"] {
-  background-color: #ef4444 !important;
-  border: 1px solid #dc2626 !important;
+  background-color: #dc2626 !important;
+  border: 1px solid #ef4444 !important;
   color: #ffffff !important;
   font-weight: 800 !important;
+} div.stButton > button[kind="primary"]:hover {
+  background-color: #ef4444 !important;
 }
 
 /* SECONDARY (Run Query / Refresh statuses / Clear selection) */
 div.stButton > button[kind="secondary"] {
-  background-color: #facc15 !important;
+  background-color: #0b1220 !important;
   border: 1px solid #eab308 !important;
-  color: #111827 !important;
+  color: #ECFEFF !important;
   font-weight: 800 !important;
+} div.stButton > button[kind="secondary"]:hover {
+  background-color: #FFBF00 !important;
+  color: #111827 !important;
 }
 
 /* TERTIARY (Organization endpoints) */
 div.stButton > button[kind="tertiary"] {
-  background-color: #0F766E !important;
-  border: 1px solid #2DD4BF !important;
-  color: #ECFEFF !important;
+  background-color: #eab308 !important;
+  border: 1px solid #facc15 !important;
+  color: #111827 !important;
 
   font-weight: 700 !important;
   font-size: 1.02rem !important;
@@ -149,16 +154,32 @@ div.stButton > button[kind="tertiary"] {
   padding-left: 0.5rem !important;
   margin-left: -0.55rem !important;
   width: calc(100% + 0.55rem) !important;
-}
-
-div.stButton > button[kind="tertiary"]:hover {
-  background-color: #14B8A6 !important;
+} div.stButton > button[kind="tertiary"]:hover {
+  background-color: #800080 !important;
+  color: #ECFEFF !important;
 }
 
 /* Right-align buttons that sit in header rows */
 .hdr-btn-right {
   display: flex;
   justify-content: flex-end;
+}
+
+/* Optional: make icon buttons feel nicer */
+button[kind="secondary"] {
+  border-radius: 10px !important;
+}
+
+div.stButton > button[aria-label="Settings ⚙️"] {
+  white-space: nowrap !important;
+}
+
+/* Vertical divider between settings drawer and content */
+.settings-v-divider {
+  border-left: 1px solid #1f2937;
+  height: 100%;
+  min-height: 85vh;   /* gives a nice long divider */
+  margin-top: 0.5rem;
 }
 
 

@@ -25,12 +25,21 @@ if "user" not in st.session_state:
 if "status_refresh_key" not in st.session_state:
     st.session_state["status_refresh_key"] = 0
 
+if "route" not in st.session_state:
+    st.session_state["route"] = "dashboard"  # "dashboard" | "settings_account" | "settings_admin"
+
+if "settings_menu_open" not in st.session_state:
+    st.session_state["settings_menu_open"] = False
+
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
 BASE_DIR = Path(__file__).resolve().parent
 LOGIN_URL = f"{API_BASE}/login"
 QUERIES_URL = f"{API_BASE}/queries"
 RUN_QUERY_URL = f"{API_BASE}/run_query"
+ME_URL = f"{API_BASE}/me"
+USERS_URL = f"{API_BASE}/users"
+
 
 STYLES_PATH = BASE_DIR / "assets" / "styles.css"
 #STYLES_PATH = Path("assets") / "styles.css"
@@ -76,11 +85,13 @@ def do_login(username: str, password: str):
         st.session_state["token"] = data["access_token"]
         st.session_state["user"] = {
             "username": data["username"],
-            "role": data.get("role", "viewer"),
-            "display_name": data.get("display_name", data.get("username"))
+            "role": data.get("role", "user"),
+            "display_name": data.get("display_name", data.get("username")),
+            "dashboard_access": data.get("dashboard_access", "none")
         }
         st.session_state["logged_in"] = True
         st.session_state["just_logged_in"] = True
+        st.session_state["route"] = "dashboard"
         return True, None
     except requests.HTTPError as he:
         try:
@@ -144,6 +155,25 @@ def load_health_status_map(_refresh_key: int):
 def safe_rerun():
     time.sleep(0.1)
     st.rerun()
+
+def auth_headers():
+    token = st.session_state.get("token")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
+def refresh_me():
+    """Pull latest role/permissions from backend (so changes apply without relogin)."""
+    try:
+        r = requests.get(ME_URL, headers=auth_headers(), timeout=10)
+        r.raise_for_status()
+        me = r.json()
+        if "user" not in st.session_state:
+            st.session_state["user"] = {}
+        st.session_state["user"].update(me)
+        return True
+    except Exception:
+        return False
+
 
 # ---------- UI components ----------
 def top_navbar():
@@ -247,18 +277,31 @@ def dashboard_view():
         initials = "".join(part[0].upper() for part in name_parts[:2]) if name_parts else "U"
 
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
-        st.markdown(
-            f"""
-            <div class="user-profile-header">
-                <div class="user-avatar">{initials}</div>
-                <div class="user-profile-header-title">User Profile</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+
+        header_cols = st.columns([8, 2], vertical_alignment="center")
+
+        with header_cols[0]:
+            st.markdown(
+                f"""
+                <div class="user-profile-header">
+                    <div class="user-avatar">{initials}</div>
+                    <div class="user-profile-header-title">User Profile</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with header_cols[1]:
+            st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
+            if st.button("Settings ⚙️", key="open_settings"):  # no type!
+                st.session_state["route"] = "settings_account"
+                safe_rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
         st.write(f"**User:** {display_name}")
         st.write(f"**Role:** {user.get('role', 'viewer')}")
         st.markdown("</div>", unsafe_allow_html=True)
+
 
         # ---- Topic card ----
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
@@ -502,8 +545,18 @@ def dashboard_view():
                 disabled=True
             )
 
-            run_clicked = st.button("Run Query", key="run_query_btn", type="secondary")
+            # Permission gating for "Run Query"
+            can_use = (st.session_state.get("user", {}).get("dashboard_access") == "use")
 
+            run_clicked = st.button(
+                "Run Query",
+                key="run_query_btn",
+                type="secondary",
+                disabled=not can_use
+            )
+
+            if not can_use:
+                st.info("Your dashboard permission is set to 'view' (or 'none'). Ask an admin to enable 'use' to run queries.")
 
             if run_clicked:
                 with st.spinner("Running query..."):
@@ -576,14 +629,209 @@ def dashboard_view():
     st.caption("Demo dashboard. Use top-right menu to logout.")
 
 
+def account_view():
+    refresh_me()
+    user = st.session_state.get("user", {})
+    st.markdown("#### Account information")
+    st.write(f"**Name:** {user.get('display_name', '-')}")
+    st.write(f"**Username:** {user.get('username', '-')}")
+    st.write(f"**Role:** {user.get('role', '-')}")
+    st.write(f"**Dashboard access:** {user.get('dashboard_access', '-')}")
+    st.markdown("---")
+    if st.button("Back to dashboard", type="secondary"):
+        st.session_state["route"] = "dashboard"
+        safe_rerun()
+
+
+def admin_view():
+    refresh_me()
+    user = st.session_state.get("user", {})
+    if user.get("role") != "admin":
+        st.error("Admin privileges required.")
+        return
+
+    st.markdown("#### Admin controls")
+    st.caption("Manage roles and dashboard permissions for users.")
+
+    try:
+        r = requests.get(USERS_URL, headers=auth_headers(), timeout=15)
+        r.raise_for_status()
+        users = r.json()
+    except Exception as e:
+        st.error(f"Could not load users: {e}")
+        return
+
+    if not users:
+        st.info("No users found.")
+        return
+
+    access_options = ["none", "view", "use"]
+    role_options = ["user", "admin"]
+
+    # Track changes locally (session)
+    if "pending_user_updates" not in st.session_state:
+        st.session_state["pending_user_updates"] = {}
+
+    pending = st.session_state["pending_user_updates"]
+
+    # Render editable rows (NO per-row save)
+    for u in users:
+        username = u["username"]
+        col1, col2, col3 = st.columns([3, 2, 2])
+
+        with col1:
+            st.write(f"**{u.get('display_name', username)}**")
+            st.caption(username)
+
+        with col2:
+            new_role = st.selectbox(
+                "Role",
+                role_options,
+                index=role_options.index(u.get("role", "user")),
+                key=f"role_{username}",
+                label_visibility="collapsed"
+            )
+
+        with col3:
+            new_access = st.selectbox(
+                "Dashboard",
+                access_options,
+                index=access_options.index(u.get("dashboard_access", "none")),
+                key=f"dash_{username}",
+                label_visibility="collapsed"
+            )
+
+        # Store only if changed
+        if new_role != u.get("role", "user") or new_access != u.get("dashboard_access", "none"):
+            pending[username] = {"role": new_role, "dashboard_access": new_access}
+        else:
+            pending.pop(username, None)
+
+    st.markdown("---")
+
+    btn_left, btn_right = st.columns([1, 1])
+
+    with btn_left:
+        back_clicked = st.button(
+            "Back to dashboard",
+            key="admin_back",
+            type="secondary"
+        )
+
+    with btn_right:
+        # Right-align Save button
+        st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
+        save_clicked = st.button(
+            "Save changes",
+            key="save_all_admin",
+            type="secondary",
+            disabled=(len(pending) == 0)
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    if save_clicked:
+        errors = []
+        updated = 0
+        for username, payload in pending.items():
+            try:
+                pr = requests.patch(
+                    f"{USERS_URL}/{username}",
+                    json=payload,
+                    headers=auth_headers(),
+                    timeout=15
+                )
+                pr.raise_for_status()
+                updated += 1
+            except Exception as e:
+                errors.append(f"{username}: {e}")
+
+        st.session_state["pending_user_updates"] = {}
+
+        if errors:
+            st.error("Some updates failed:\n" + "\n".join(errors))
+        else:
+            st.success(f"Saved {updated} change(s).")
+
+        refresh_me()
+        safe_rerun()
+
+    if back_clicked:
+        st.session_state["route"] = "dashboard"
+        safe_rerun()
+
+
+def settings_view():
+    refresh_me()
+    user = st.session_state.get("user", {})
+    role = user.get("role", "user")
+
+    # Column widths mimic a drawer: narrow when closed, wider when open
+    if st.session_state["settings_menu_open"]:
+        menu_col, divider_col, content_col = st.columns([2, 0.15, 10])
+    else:
+        menu_col, content_col = st.columns([1, 11])
+        divider_col = None
+
+    with menu_col:
+        if st.button("☰", key="hamburger_settings", type="secondary"):
+            st.session_state["settings_menu_open"] = not st.session_state["settings_menu_open"]
+            safe_rerun()
+
+        if st.session_state["settings_menu_open"]:
+            if st.button("Account", key="menu_account", type="secondary"):
+                st.session_state["route"] = "settings_account"
+                safe_rerun()
+
+            if role == "admin":
+                if st.button("Admin", key="menu_admin", type="secondary"):
+                    st.session_state["route"] = "settings_admin"
+                    safe_rerun()
+
+    if divider_col is not None:
+        with divider_col:
+            st.markdown('<div class="settings-v-divider"></div>', unsafe_allow_html=True)
+    
+    with content_col:
+        hdr = st.columns([10, 2])
+        with hdr[0]:
+            st.markdown("### Settings")
+        with hdr[1]:
+            if st.button("Logout", type="primary", key="logout_settings"):
+                do_logout()
+                safe_rerun()
+        st.markdown("---")
+
+        route = st.session_state.get("route", "settings_account")
+        if route == "settings_admin":
+            admin_view()
+        else:
+            account_view()
+
+
+
 def main():
     load_css()
 
-    # full login gate
-    if st.session_state.get("logged_in") or find_token():
-        dashboard_view()
-    else:
+    if not (st.session_state.get("logged_in") or find_token()):
         login_view()
+        return
+
+    # Ensure we have latest permissions
+    refresh_me()
+    user = st.session_state.get("user", {})
+    route = st.session_state.get("route", "dashboard")
+
+    # If user has no dashboard access, force them into Settings → Account
+    if user.get("dashboard_access", "none") == "none" and route == "dashboard":
+        st.warning("You don’t have dashboard access. Contact an admin to enable it.")
+        st.session_state["route"] = "settings_account"
+        route = "settings_account"
+
+    if route.startswith("settings_"):
+        settings_view()
+    else:
+        dashboard_view()
+
 
 
 if __name__ == "__main__":

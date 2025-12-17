@@ -38,6 +38,9 @@ JWT_EXP_MIN = USER_CONFIG.get("jwt", {}).get("expiry_minutes", 360)
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
+VALID_ROLES = {"admin", "user"}
+VALID_DASHBOARD_ACCESS = {"none", "view", "use"}
+
 
 # ---------- Models ----------
 
@@ -52,6 +55,21 @@ class LoginResponse(BaseModel):
     username: str
     role: str
     display_name: str
+    dashboard_access: str  # "none" | "view" | "use"
+
+class PublicUser(BaseModel):
+    username: str
+    role: str
+    display_name: str
+    dashboard_access: str
+
+
+class UpdateUserRequest(BaseModel):
+    role: Optional[str] = None                 # "admin" | "user"
+    dashboard_access: Optional[str] = None     # "none" | "view" | "use"
+    display_name: Optional[str] = None         # optional if you want to edit name too
+
+
 
 
 class RunQueryRequest(BaseModel):
@@ -66,6 +84,30 @@ def find_user(username: str) -> Optional[Dict[str, Any]]:
         if u.get("username") == username:
             return u
     return None
+
+def normalize_role(role: Optional[str]) -> str:
+    # Backwards compatibility: map old roles to new ones
+    if not role:
+        return "user"
+    role_lower = role.strip().lower()
+    if role_lower in {"developer", "dev", "administrator"}:
+        return "admin"
+    if role_lower in VALID_ROLES:
+        return role_lower
+    return "user"
+
+
+def normalize_dashboard_access(value: Optional[str]) -> str:
+    if not value:
+        return "none"
+    v = value.strip().lower()
+    return v if v in VALID_DASHBOARD_ACCESS else "none"
+
+
+def save_user_config() -> None:
+    # Persist in-memory USER_CONFIG back to disk
+    with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(USER_CONFIG, f, indent=2)
 
 
 def verify_password(plain_password: str, stored_password: str) -> bool:
@@ -95,6 +137,40 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
     return data
 
 
+def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    role = normalize_role(current_user.get("role"))
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return current_user
+
+
+def get_latest_user_record(username: str) -> Optional[Dict[str, Any]]:
+    # Always enforce latest role/permissions (not just JWT contents)
+    return find_user(username)
+
+
+def require_dashboard_use(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+    username = current_user.get("username") or current_user.get("sub")
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+
+    u = get_latest_user_record(username)
+    if not u:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    access = normalize_dashboard_access(u.get("dashboard_access"))
+    if access != "use":
+        raise HTTPException(status_code=403, detail="Dashboard 'use' permission required")
+
+    # Return latest merged info
+    return {
+        "username": u.get("username"),
+        "display_name": u.get("display_name", u.get("username")),
+        "role": normalize_role(u.get("role")),
+        "dashboard_access": access
+    }
+
+
 # ---------- Auth endpoints ----------
 
 @app.get("/health")
@@ -116,11 +192,15 @@ def login(req: LoginRequest):
     if not verify_password(req.password, stored_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    role = normalize_role(user.get("role"))
+    dash = normalize_dashboard_access(user.get("dashboard_access"))
+
     payload = {
         "sub": user.get("username"),
         "username": user.get("username"),
-        "role": user.get("role", "viewer"),
+        "role": role,
         "display_name": user.get("display_name", user.get("username")),
+        "dashboard_access": dash
     }
 
     token = create_jwt(payload)
@@ -130,12 +210,70 @@ def login(req: LoginRequest):
         username=payload["username"],
         role=payload["role"],
         display_name=payload["display_name"],
+        dashboard_access=payload["dashboard_access"]
     )
+
 
 
 @app.get("/me")
 def me(current_user: Dict[str, Any] = Depends(get_current_user)):
-    return current_user
+    username = current_user.get("username") or current_user.get("sub")
+    u = get_latest_user_record(username) if username else None
+    if not u:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    return {
+        "username": u.get("username"),
+        "display_name": u.get("display_name", u.get("username")),
+        "role": normalize_role(u.get("role")),
+        "dashboard_access": normalize_dashboard_access(u.get("dashboard_access"))
+    }
+
+
+@app.get("/users", response_model=List[PublicUser])
+def list_users(_: Dict[str, Any] = Depends(require_admin)):
+    out: List[PublicUser] = []
+    for u in USER_CONFIG.get("users", []):
+        out.append(PublicUser(
+            username=u.get("username"),
+            role=normalize_role(u.get("role")),
+            display_name=u.get("display_name", u.get("username")),
+            dashboard_access=normalize_dashboard_access(u.get("dashboard_access"))
+        ))
+    return out
+
+
+@app.patch("/users/{username}", response_model=PublicUser)
+def update_user(username: str, req: UpdateUserRequest, _: Dict[str, Any] = Depends(require_admin)):
+    u = find_user(username)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if req.role is not None:
+        new_role = normalize_role(req.role)
+        if new_role not in VALID_ROLES:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        u["role"] = new_role
+
+    if req.dashboard_access is not None:
+        new_access = normalize_dashboard_access(req.dashboard_access)
+        if new_access not in VALID_DASHBOARD_ACCESS:
+            raise HTTPException(status_code=400, detail="Invalid dashboard_access")
+        u["dashboard_access"] = new_access
+
+    if req.display_name is not None:
+        u["display_name"] = req.display_name
+
+    save_user_config()
+
+    return PublicUser(
+        username=u.get("username"),
+        role=normalize_role(u.get("role")),
+        display_name=u.get("display_name", u.get("username")),
+        dashboard_access=normalize_dashboard_access(u.get("dashboard_access"))
+    )
+
+
 
 
 # ---------- SPARQL engine endpoints ----------
@@ -156,7 +294,7 @@ def list_queries() -> List[Dict[str, Any]]:
 
 
 @app.post("/run_query")
-def run_query(req: RunQueryRequest, current_user: Dict[str, Any] = Depends(get_current_user)):
+def run_query(req: RunQueryRequest, current_user: Dict[str, Any] = Depends(require_dashboard_use)):
     """
     Run a routine query by ID.
     Optionally restrict execution to a subset of endpoints.
