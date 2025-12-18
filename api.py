@@ -31,9 +31,11 @@ try:
 except Exception:
     USER_CONFIG = {"users": [], "jwt": {}}
 
-JWT_SECRET = USER_CONFIG.get("jwt", {}).get("secret", "CHANGE_ME")
 JWT_ALGO = USER_CONFIG.get("jwt", {}).get("algo", "HS256")
 JWT_EXP_MIN = USER_CONFIG.get("jwt", {}).get("expiry_minutes", 360)
+JWT_SECRET = os.getenv("JWT_SECRET_KEY")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET_KEY not set in environment")
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -108,6 +110,27 @@ def save_user_config() -> None:
     # Persist in-memory USER_CONFIG back to disk
     with open(USER_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(USER_CONFIG, f, indent=2)
+
+
+def resolve_user_password(user: Dict[str, Any]) -> str:
+    """
+    Resolve user password from environment variable.
+    """
+    env_key = user.get("password_env")
+    if not env_key:
+        raise HTTPException(
+            status_code=500,
+            detail=f"password_env not defined for user '{user.get('username')}'"
+        )
+
+    password = os.getenv(env_key)
+    if not password:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Environment variable '{env_key}' is not set"
+        )
+
+    return password
 
 
 def verify_password(plain_password: str, stored_password: str) -> bool:
@@ -188,7 +211,7 @@ def login(req: LoginRequest):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    stored_password = user.get("password", "")
+    stored_password = resolve_user_password(user)
     if not verify_password(req.password, stored_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

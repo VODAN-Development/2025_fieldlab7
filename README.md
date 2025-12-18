@@ -1,42 +1,101 @@
-FieldLab 7 – Federated Dashboard (Prototype)
+# FieldLab 7 – Federated SPARQL Dashboard (Prototype)
 
-This project implements a prototype dashboard for executing routine SPARQL queries across distributed RDF data sources.
-The system consists of:
+This repository contains a **prototype federated dashboard** developed for **FieldLab 7**.
+The system enables execution of **predefined (routine) SPARQL queries** across **distributed RDF/SPARQL endpoints** and presents results through a simple web-based interface.
 
-- A SPARQL engine (mainEngine.py) for loading queries and sending them to external SPARQL endpoints
-- A FastAPI backend (api.py) that exposes /queries and /run_query
-- A Streamlit UI (app.py) that allows users to select topics, choose routine queries, and view results
+The project is designed as a **local prototype**, with support for mock endpoints and configuration-driven integration of real external datasets provided by FieldLab partners.
 
-This prototype is currently running locally and integrates with mock or local SPARQL endpoints.
-External FieldLab groups will provide real endpoint URLs and datasets later in the project.
+---
 
+## 🧩 System Overview
 
-🔧 Setup (Local Development):
+The system consists of three main components:
+
+- **SPARQL Execution Engine**  
+  Handles loading of query definitions and execution against configured SPARQL endpoints.
+
+- **Backend API (FastAPI)**  
+  Exposes endpoints for listing available queries and executing selected queries.
+
+- **Frontend Dashboard (Streamlit)**  
+  Provides a user interface to select topics, choose routine queries, and view query results.
+
+---
+
+## 🛠️ Technologies Used
+
+- Python 3
+- FastAPI
+- Streamlit
+- SPARQLWrapper / RDF tooling
+- JSON-based configuration
+- Virtual environments for dependency isolation
+
+---
+
+## Important Notes
+
+1. **Python Dependencies**  
+   The `requirements.txt` file contains the complete list of Python libraries required to run the application. All dependencies should be installed using `pip install -r requirements.txt` before starting the API or dashboard.
+
+2. **Endpoint Credentials & Sensitive Configuration**  
+   - Endpoint Credentials, access tokens, or other sensitive endpoint-related values are currently managed via **local environment variables** and are not stored directly in the repository.
+   - User authentication secrets (passwords, JWT secret) are also managed via **local environment variables** and are not stored directly in the repository.  
+   - These values are intentionally excluded from version control to avoid exposing sensitive information.
+
+3. **Federated Endpoint Availability**  
+   Query results depend on the availability and responsiveness of the configured SPARQL endpoints. Temporary endpoint downtime or network issues may affect query execution and returned results.
+
+4. **Development Status**  
+   This project is a prototype developed in the context of FieldLab 7. Some features, configurations, or integrations may be incomplete or subject to change as the project evolves.
+
+---
+
+## 🔧 Setup (Local Development):
 1. Create and activate virtual environment:
 "python -m venv venv
 venv\Scripts\activate   # Windows"
 
-2. Install dependencies
+2. Install dependencies:
 "pip install -r requirements.txt"
 
+3. ▶️ Run the Backend API (FastAPI):
+"uvicorn api:app --reload"
 
-▶️ Run Streamlit Dashboard:
-"streamlit run app.py"
+4. ▶️ Run Streamlit Dashboard:
+"streamlit run app.py" 
 
+---
 
-📁 Project Structure (simplified):
-api.py                 # Backend API
-mainEngine.py          # SPARQL execution engine
-app.py                 # Streamlit dashboard UI
-config/
-  endpoints_config.json
-  query_config.json
-queries/
-  sexual_violence/
-    *.sparql
+## 📁 Project Structured
 
+```text
+DSIP_FIELDLAB7_DEV/
+│
+├── api.py                     # FastAPI backend
+├── app.py                     # Streamlit dashboard UI
+├── mainEngine.py              # SPARQL execution engine
+├── endpoint_health_check.py   # Endpoint availability checks
+│
+├── assets/                    # UI assets (logos, styles)
+│   ├── federated_lighthouse_logo.png
+│   ├── federated_lighthouse_logo_dark.png
+│   └── styles.css
+│
+├── config/                    # Configuration files
+│   ├── endpoints_config.json  # SPARQL endpoint definitions
+│   ├── fdp_config.json        # FDP-related configuration
+│   ├── query_config.json     # Query metadata and mappings
+│   └── user_config.json      # User-level configuration
+│
+├── queries/                   # SPARQL query collections
+│   ├── fl_mock/
+│   ├── human_trafficking/
+│   ├── refugee/
+│   └── sexual_violence/
+│
+├── requirements.txt           # Python dependencies
+├── README.md                  # Project documentation
+├── LICENSE
+└── CONTRIBUTING.md
 
-📌 Status:
-- Core engine, API, and UI prototype are functional locally
-- Integration with external FieldLab datasets will be added as endpoints become available
-- Authentication, metadata display, and visualizations will be implemented in next development phases

@@ -278,7 +278,7 @@ def dashboard_view():
 
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
 
-        header_cols = st.columns([8, 2], vertical_alignment="center")
+        header_cols = st.columns([7, 3], vertical_alignment="center")
 
         with header_cols[0]:
             st.markdown(
@@ -293,7 +293,7 @@ def dashboard_view():
 
         with header_cols[1]:
             st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
-            if st.button("Settings ⚙️", key="open_settings"):  # no type!
+            if st.button("⚙️", key="open_settings", type="secondary", help="Settings"):
                 st.session_state["route"] = "settings_account"
                 safe_rerun()
             st.markdown("</div>", unsafe_allow_html=True)
@@ -331,13 +331,13 @@ def dashboard_view():
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
 
         # Header row: title (left) + button (right)
-        hdr_l, hdr_r = st.columns([6, 2], vertical_alignment="center")
+        hdr_l, hdr_r = st.columns([7, 3], vertical_alignment="center")
         with hdr_l:
             st.markdown("#### Organization Endpoints")
         with hdr_r:
             # right-aligned button
-            st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
-            refresh_clicked = st.button("Refresh statuses", key="refresh_statuses", type="secondary")
+            st.markdown('<div class="hdr-btn-right hdr-icon-btn">', unsafe_allow_html=True)
+            refresh_clicked = st.button("🔄", key="refresh_statuses", type="secondary", help="Refresh statuses")
             st.markdown("</div>", unsafe_allow_html=True)
 
         # 1) Always load static org list instantly
@@ -427,17 +427,12 @@ def dashboard_view():
         selected_org = st.session_state.get("selected_org")
 
         # Header row: title (left) + clear button (right)
-        hdr_l, hdr_r = st.columns([6, 2], vertical_alignment="center")
+        hdr_l, hdr_r = st.columns([7, 3], vertical_alignment="center")
         with hdr_l:
             st.markdown("#### FAIR Data Point (metadata)")
         with hdr_r:
-            st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
-            clear_clicked = st.button(
-                "Clear selection",
-                key="clear_org_selection",
-                type="secondary",
-                disabled=(not bool(selected_org)),
-            )
+            st.markdown('<div class="hdr-btn-right hdr-icon-btn">', unsafe_allow_html=True)
+            clear_clicked = st.button("🧹", key="clear_org_selection", type="secondary", help="Clear selection", disabled=(not bool(selected_org)))
             st.markdown("</div>", unsafe_allow_html=True)
 
         if clear_clicked:

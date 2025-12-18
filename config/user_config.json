@@ -2,28 +2,28 @@
   "users": [
     {
       "username": "Jerry",
-      "password": "jerrybhairocks@123",
+      "password_env": "DASHBOARD_JERRY_PASSWORD",
       "role": "admin",
-      "display_name": "Jerry Developer", 
+      "display_name": "Jerry Developer",
       "dashboard_access": "use"
     },
     {
       "username": "admin",
-      "password": "admin@admin@123",
+      "password_env": "DASHBOARD_ADMIN_PASSWORD",
       "role": "admin",
-      "display_name": "Admin", 
+      "display_name": "Admin",
       "dashboard_access": "use"
     },
     {
       "username": "testuser1",
-      "password": "testuser@123",
+      "password_env": "DASHBOARD_TESTUSER1_PASSWORD",
       "role": "user",
-      "display_name": "Test User 1", 
+      "display_name": "Test User 1",
       "dashboard_access": "use"
     }
   ],
   "jwt": {
-    "secret": "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET",
+    "secret_env": "JWT_SECRET_KEY",
     "algo": "HS256",
     "expiry_minutes": 360
   }
