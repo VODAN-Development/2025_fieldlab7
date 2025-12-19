@@ -180,13 +180,20 @@ def top_navbar():
     user = st.session_state.get("user")
     
     # Create a 3-column layout: title | spacer | logout button
-    col_title, col_spacer, col_logout = st.columns([10, 1, 1])
+    col_title, col_spacer, col_logout = st.columns([10, 1, 1], vertical_alignment="center")
 
     with col_title:
-        st.markdown(
-            "<h2 style='margin: 6px 0px;'>Federated Lighthouse Dashboard – FieldLab 7</h2>",
-            unsafe_allow_html=True
-        )
+        # Logo + title in a single row (logo on the left)
+        logo_col, text_col = st.columns([1, 12], vertical_alignment="center")
+
+        with logo_col:
+            st.image("assets/federated_lighthouse_logo_dark.png", width=150)
+
+        with text_col:
+            st.markdown(
+                "<h2 style='margin: 6px 0px;'>Federated Lighthouse Dashboard – FieldLab 7</h2>",
+                unsafe_allow_html=True
+            )
 
     # if user missing → nothing shown
     if not user:
@@ -243,6 +250,79 @@ def login_view():
                 st.stop() 
             else:
                 st.error(f"Login failed: {err}")
+
+
+def render_fdp_modal(org_key: str):
+    fdp_configs = load_fdp_configs()
+    org_meta = fdp_configs.get(org_key)
+
+    @st.dialog(f"FAIR Data Point (metadata) — {org_key}", width="large")
+    def _modal():
+        if not org_meta:
+            st.warning(f"No FDP metadata found for '{org_key}' in fdp_configs.json.")
+            return
+
+        # Quick summary top row
+        c1, c2, c3 = st.columns([2, 2, 2])
+        with c1:
+            st.metric("Catalogues", len(org_meta.get("catalogues", [])))
+        with c2:
+            st.metric("Datasets", len(org_meta.get("datasets", [])))
+        with c3:
+            st.metric("Distributions", len(org_meta.get("distributions", [])))
+
+        st.markdown("---")
+
+        # Catalogues
+        st.subheader("Catalogues")
+        cats = org_meta.get("catalogues", [])
+        if not cats:
+            st.caption("No catalogues.")
+        else:
+            for c in cats:
+                with st.expander(c.get("title", "(untitled)"), expanded=False):
+                    if c.get("description"):
+                        st.write(c["description"])
+
+        # Datasets
+        st.subheader("Datasets")
+        dsets = org_meta.get("datasets", [])
+        if not dsets:
+            st.caption("No datasets.")
+        else:
+            for d in dsets:
+                title = d.get("title", "(untitled)")
+                with st.expander(title, expanded=False):
+                    if d.get("description"):
+                        st.write(d["description"])
+                    if d.get("routine_queries"):
+                        st.markdown("**Routine queries**")
+                        st.write(", ".join(f"`{q}`" for q in d["routine_queries"]))
+
+        # Distributions
+        st.subheader("Distributions")
+        dists = org_meta.get("distributions", [])
+        if not dists:
+            st.caption("No distributions.")
+        else:
+            for dist in dists:
+                with st.expander(dist.get("format", "Distribution"), expanded=False):
+                    st.write(f"**Auth:** {dist.get('auth','-')}")
+                    st.code(dist.get("access_url", ""), language="text")
+
+        # Dashboards
+        st.subheader("Dashboards")
+        boards = org_meta.get("dashboards", [])
+        if not boards:
+            st.caption("No dashboards.")
+        else:
+            for b in boards:
+                st.write(f"- **{b.get('title','(untitled)')}** (query: `{b.get('query_id','')}`)")
+
+        st.markdown("---")
+        st.caption("Close this dialog to return to the dashboard.")
+
+    _modal()
 
 
 def dashboard_view():
@@ -411,86 +491,18 @@ def dashboard_view():
 
                     if clicked:
                         st.session_state.selected_org = key
+                        st.session_state["open_fdp_modal"] = True
                         safe_rerun()
+            
+            if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_org"):
+                st.session_state["open_fdp_modal"] = False
+                render_fdp_modal(st.session_state["selected_org"])
+
 
 
         else:
             st.write("No organizations available for this topic.")
 
-
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        # ---- FAIR Data Point card ----
-        st.markdown('<div class="fl-card">', unsafe_allow_html=True)
-        
-        fdp_configs = load_fdp_configs()
-        selected_org = st.session_state.get("selected_org")
-
-        # Header row: title (left) + clear button (right)
-        hdr_l, hdr_r = st.columns([7, 3], vertical_alignment="center")
-        with hdr_l:
-            st.markdown("#### FAIR Data Point (metadata)")
-        with hdr_r:
-            st.markdown('<div class="hdr-btn-right hdr-icon-btn">', unsafe_allow_html=True)
-            clear_clicked = st.button("🧹", key="clear_org_selection", type="secondary", help="Clear selection", disabled=(not bool(selected_org)))
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        if clear_clicked:
-            st.session_state.selected_org = None
-            safe_rerun()
-
-        if not selected_org:
-            st.info("Click an organization above to view its metadata.")
-        else:
-            org_meta = fdp_configs.get(selected_org)
-
-            if not org_meta:
-                st.warning(f"No FDP metadata found for '{selected_org}' in fdp_configs.json.")
-            else:
-                st.success(f"Showing metadata for: {selected_org}")
-
-                # Catalogues
-                cats = org_meta.get("catalogues", [])
-                st.markdown("**Catalogues**")
-                if not cats:
-                    st.caption("No catalogues.")
-                else:
-                    for c in cats:
-                        st.markdown(f"- **{c.get('title','(untitled)')}** — {c.get('description','')}".strip())
-
-                # Datasets
-                dsets = org_meta.get("datasets", [])
-                st.markdown("**Datasets**")
-                if not dsets:
-                    st.caption("No datasets.")
-                else:
-                    for d in dsets:
-                        st.markdown(f"- **{d.get('title','(untitled)')}**")
-                        if d.get("description"):
-                            st.caption(d["description"])
-                        if d.get("routine_queries"):
-                            st.markdown("  • Queries: " + ", ".join(f"`{q}`" for q in d["routine_queries"]))
-
-                # Distributions
-                dists = org_meta.get("distributions", [])
-                st.markdown("**Distributions**")
-                if not dists:
-                    st.caption("No distributions.")
-                else:
-                    for dist in dists:
-                        st.markdown(
-                            f"- {dist.get('format','')} | {dist.get('auth','')}  \n"
-                            f"  Access URL: `{dist.get('access_url','')}`"
-                        )
-
-                # Dashboards
-                boards = org_meta.get("dashboards", [])
-                st.markdown("**Dashboards**")
-                if not boards:
-                    st.caption("No dashboards.")
-                else:
-                    for b in boards:
-                        st.markdown(f"- {b.get('title','(untitled)')} (query: `{b.get('query_id','')}`)")
 
         st.markdown("</div>", unsafe_allow_html=True)
 
