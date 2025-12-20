@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .streamlit/
 .env
-config/fdp_config_backup.json
+config/backup/
 bin/
 etc/
 lib/

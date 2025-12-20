@@ -5,7 +5,7 @@
     "topic": "sexual_violence",
     "description": "Counts sexual violence incidents grouped by incident type.",
     "query_file": "queries/sexual_violence/incidents_by_type.sparql",
-    "allowed_endpoints": ["SORD"],
+    "allowed_endpoints": ["SafeLine"],
     "visualization": "bar"
   },
 
@@ -14,7 +14,7 @@
     "topic": "sexual_violence",
     "description": "Counts sexual violence incidents grouped by geographical location.",
     "query_file": "queries/sexual_violence/incidents_by_location.sparql",
-    "allowed_endpoints": ["SORD"],
+    "allowed_endpoints": ["SafeLine"],
     "visualization": "bar"
   },
 
@@ -23,7 +23,7 @@
     "topic": "sexual_violence",
     "description": "Aggregated count of victims grouped by gender.",
     "query_file": "queries/sexual_violence/victims_by_gender.sparql",
-    "allowed_endpoints": ["SORD"],
+    "allowed_endpoints": ["SafeLine"],
     "visualization": "pie"
   },
 
@@ -32,7 +32,7 @@
     "topic": "sexual_violence",
     "description": "Counts perpetrators grouped by affiliation.",
     "query_file": "queries/sexual_violence/perpetrator_affiliations.sparql",
-    "allowed_endpoints": ["SORD"],
+    "allowed_endpoints": ["SafeLine"],
     "visualization": "bar"
   }, 
 
@@ -59,7 +59,7 @@
     "topic": "refugee",
     "description": "Counts all refugee incidents.",
     "query_file": "queries/refugee/list_all_incidents.sparql",
-    "allowed_endpoints": ["DPO"],
+    "allowed_endpoints": ["RPDS", "RPIS"],
     "visualization": "bar"
   },
 
@@ -68,7 +68,7 @@
   "topic": "refugee",
   "description": "Lists all refugee incidents by type.",
   "query_file": "queries/refugee/incidents_by_type.sparql",
-  "allowed_endpoints": ["DPO"],
+  "allowed_endpoints": ["RPDS", "RPIS"],
   "visualization": "bar"
   },
 
@@ -77,7 +77,7 @@
   "topic": "human_trafficking",
   "description": "List all human trafficking incidents with departure & destination.",
   "query_file": "queries/human_trafficking/incidents_by_origin_dest.sparql",
-  "allowed_endpoints": ["EEPA"],
+  "allowed_endpoints": ["SHTSI", "HTR"],
   "visualization": "bar"
   }
 }

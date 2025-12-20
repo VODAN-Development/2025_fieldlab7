@@ -1,36 +1,477 @@
 {
-  "DPO": {
+  "RPDS": {
+    "fieldlabs": ["FieldLab 1", "FieldLab 1B"],
+    "fdp_support": {
+      "organization": "Aksum University FDP",
+      "contact_person": "Mohammed Ahmed"
+    },
+    "application": {
+      "name": "FAIR-based Refugee Protection Data Systems",
+      "abbreviation": "RPDS",
+      "description": "FAIR-based Refugee Protection Data Systems (RPDS) is a tool for the safe and secure collection of data related to vulnerable refugee populations.", 
+      "stored": "Allegrograph Cloud", 
+      "sparql_endpoint_url": "https://ag1jlq2yp82pfp35.allegrograph.cloud/repositories/fieldlab1/sparql"
+    },
+    "themes": ["Refugee Data"],
     "catalogues": [
       {
-        "title": "FieldLab 1B Catalogue",
-        "publisher": "FieldLab 1B",
-        "description": "Catalogue for refugee protection incidents dataset."
+        "title": "RPDS",
+        "abbreviation": "RPDS",
+        "link": ""
       }
     ],
     "datasets": [
       {
-        "title": "Refugee Protection Incidents",
-        "description": "CDM-aligned incident-level records; no PII; demo only.",
-        "themes": ["Refugee Data"],
-        "routine_queries": ["list_all_incidents", "count_incidents_by_type"]
+        "organization_name": "Development for Peace Organization (DPO)",
+        "abbreviation": "DPO",
+        "description": "Development for Peace Organization (DPO) is a humanitarian organisation supporting the protection of refugees in Ethiopia. DPO is an Ethiopian National Organization, established in Addis Ababa 2020 and the organization is officially registered in accordance with legislation on Agency for Civil Society Organization by the registration number of 5164.",
+        "organization_link": "https://devforpeace.org/"
       }
     ],
     "distributions": [
       {
-        "access_url": "https://ag1klf98suhepl85.allegrograph.cloud/repositories/fieldlab1",
-        "format": "SPARQL 1.1",
-        "auth": "Basic Auth"
+        "id": "DPO2026Q1",
+        "data_controllers": "DPO"
       }
     ],
-    "dashboards": [
-      { "title": "Incidents by type", "query_id": "count_incidents_by_type" }
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
     ]
   },
 
+  "RPIS": {
+    "fieldlabs": ["FieldLab 4"],
+    "fdp_support": {
+      "organization": "Aksum University FDP",
+      "contact_person": "Mohammed Ahmed"
+    },
+    "application": {
+      "name": "Secure FAIR Refugee Protection Information System",
+      "abbreviation": "RPIS",
+      "description": "", 
+      "stored": "Allegrograph Cloud", 
+      "sparql_endpoint_url": ""
+    },
+    "themes": ["Refugee Data"],
+    "catalogues": [
+      {
+        "title": "RPIS",
+        "abbreviation": "RPIS",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Development for Peace Organization (DPO)",
+        "abbreviation": "DPO",
+        "description": "Development for Peace Organization (DPO) is a humanitarian organisation supporting the protection of refugees in Ethiopia. DPO is an Ethiopian National Organization, established in Addis Ababa 2020 and the organization is officially registered in accordance with legislation on Agency for Civil Society Organization by the registration number of 5164.",
+        "organization_link": "https://devforpeace.org/"
+      }
+    ],
+    "distributions": [
+      {
+        "id": "DPO1",
+        "data_controllers": "DPO"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  },
+
+  "SafeLine": {
+    "fieldlabs": ["FieldLab 2"],
+    "fdp_support": {
+      "organization": "Tangaza University",
+      "contact_person": "Onesmus Wanjiku"
+    },
+    "application":{
+      "name": "SafeLine",
+      "abbreviation": "SafeLine",
+      "description": "SafeLine is an application to safely and securely collect data related to sexual violence in war and conflict-related situations, and in vulnerable populations.", 
+      "stored": "Apache Jena", 
+      "sparql_endpoint_url": "http://localhost:3030/sord/sparql"
+    },
+    "themes": ["Sexual Violence"],
+    "catalogues": [
+      {
+        "title": "SafeLine",
+        "abbreviation": "SafeLine",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Sudanese Organization for Research and Development (SORD)",
+        "abbreviation": "SORD",
+        "description": "Sudanese Organization for Research and Development (SORD), based in Kampala, serves vulnerable populations with a focus on sexual violence in the Horn and East Africa.",
+        "organization_link": "https://sord-sd.org"
+      },       
+      {
+        "organization_name": "Kamukunji Community Empowerment Initiative (KCEI)",
+        "abbreviation": "KCEI",
+        "description": "Kamukunji Community Empowerment Initiative (KCEI) focuses on support and registration of violence against inhabitants, with a particular focus on registering sexual violence against women and girls.",
+        "organization_link": "https://kceicbo.org/"
+      }
+    ],
+    "distributions": [
+      {
+        "id": "SORD042025",
+        "data_controllers": "SORD"
+      }, 
+      {
+        "id": "KCEI042025",
+        "data_controllers": "KCEI"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  },
+
+  "ED": {
+    "fieldlabs": ["FieldLab 3"],
+    "fdp_support": {
+      "organization": "Tangaza University",
+      "contact_person": "Onesmus Wanjiku"
+    },
+    "application": {
+      "name": "Emergency Diary: My Secure Data Place",
+      "abbreviation": "ED",
+      "description": "The Emergency Diary (ED) provides a secure data place for sensitive personal information by refugees on the move. The data is stored in Solid pods.",
+      "stored": "Solid pods - backend query: communica", 
+      "sparql_endpoint_url": ""
+    },
+    "themes": ["Refugee Data"],
+    "catalogues": [
+      {
+        "title": "ED",
+        "abbreviation": "ED",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Sanctuary Foundation",
+        "abbreviation": "Sanctuary Foundation",
+        "description": "The Sanctuary Foundation is a duly registered organisation in Kenya. Our principal objective is to assist new arrivals, including asylum and refugee seekers, in navigating the legal and bureaucratic processes required to obtain asylum status and refugee registration. In this capacity, we collaborate with existing refugee legal aid providers and other organisations that support refugees.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "Kenya (Rita)",
+        "data_controllers": "Sanctuary Foundation"
+      },
+      {
+        "id": "Ethiopia (Daniel)",
+        "data_controllers": "Sanctuary Foundation"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  },
+
+  "SHTSI": {
+    "fieldlabs": ["FieldLab 5"],
+    "fdp_support": {
+      "organization": "EEPA",
+      "contact_person": "Kai Smits"
+    },
+    "themes": ["Human Trafficking", "Refugee Data"],
+    "catalogues": [
+      {
+        "title": "SHTSI",
+        "abbreviation": "SHTSI",
+        "link": "http://fairdp.colo.ba.be"
+      }
+    ],
+    "applications": {
+      "name": "SafeVoice: Human Trafficking Source Information",
+      "abbreviation": "SHTSI",
+      "description": "This tool assists sources with sensitive information on human trafficking to safely store their information. Catalog of Human Trafficking Source Information for Safevoice, including datasets, metadata records, code, protocols, and persistent identifiers. Metadata follows FAIR principles (Findable, Accessible, Interoperable, Reusable): standardized schemas, machine-readable formats (RDF), access conditions, licensing, and provenance. Covers topics: human trafficking, Kenya, source information, security, safety; institutions: affiliation Sanctuary Foundation.", 
+      "stored": "Allegrograph Cloud", 
+      "sparql_endpoint_url": "https://ag1950eewddzjs9z.allegrograph.cloud/repositories/trafficking_repo/sparql"
+    },
+    "datasets": [
+      {
+        "organization_name": "Europe External Programme with Africa (EEPA)",
+        "abbreviation": "EEPA",
+        "description": "",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "Kenya (Rita)",
+        "data_controllers": "Rita M"
+      },
+      {
+        "id": "Ethiopia (Daniel)",
+        "data_controllers": "Daniel T"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  }, 
+
+  "HTR": {
+    "fieldlabs": ["FieldLab 6"],
+    "fdp_support": {
+      "organization": "EEPA",
+      "contact_person": "Kai Smits"
+    },
+    "themes": ["Human Trafficking", "Refugee Data"],
+    "catalogues": [
+      {
+        "title": "HTR",
+        "abbreviation": "HTR",
+        "link": "http://fairdp.colo.ba.be"
+      }
+    ],
+    "applications": {
+      "name": "Thinx",
+      "abbreviation": "Thinx", 
+      "description": " Catalog of research data for researchers on human trafficking including datasets, metadata records, code, protocols, and persistent identifiers. Metadata follows FAIR principles (Findable, Accessible, Interoperable, Reusable): standardized schemas, machine-readable formats (RDF), access conditions, licensing, and provenance. Covers topics: human trafficking, human trafficking for ransom, refugee protection, migration, routes, torture, human rights violations, Libya, Horn of Africa, Sudan, Tigray, Ethiopia, post-war, conflict, institutions: affiliation Aksum University, Leiden University, Tilburg University.", 
+      "stored": "Allegrograph Cloud", 
+      "sparql_endpoint_url": ""
+    },
+    "datasets": [
+      {
+        "organization_name": "Europe External Programme with Africa (EEPA)",
+        "abbreviation": "EEPA",
+        "description": "",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "KS01",
+        "data_controllers": "Kai Smits"
+      },
+      {
+        "id": "KS02",
+        "data_controllers": "Kai Smits"
+      },
+      {
+        "id": "MW01",
+        "data_controllers": "Morgane Wirtz"
+      },
+      {
+        "id": "MW02",
+        "data_controllers": "Morgane Wirtz"
+      },
+      {
+        "id": "DT01",
+        "data_controllers": "Daniel Tesfa"
+      },
+      {
+        "id": "DT02",
+        "data_controllers": "Daniel Tesfa"
+      },
+      {
+        "id": "DT03",
+        "data_controllers": "Daniel Tesfa"
+      },
+      {
+        "id": "KM01",
+        "data_controllers": "Kristina Melicherova"
+      },
+      {
+        "id": "KM02",
+        "data_controllers": "Kristina Melicherova"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  },
+
+  "COMPASS": {
+    "fieldlabs": ["FieldLab 8"],
+    "fdp_support": {
+      "organization": "Tangaza University",
+      "contact_person": "Onesmus"
+    },
+    "application": {
+      "name": "Afya.ke EMR Patient Data Hospital Ownership and Analytics Architecture",
+      "abbreviation": "COMPASS",
+      "description": "COMPASS is a tool to safely store patient data in health clinics.",
+      "stored": "Allegrograph Cloud", 
+      "sparql_endpoint_url": ""
+    },
+    "themes": ["Health Data"],
+    "catalogues": [
+      {
+        "title": "COMPASS",
+        "abbreviation": "COMPASS",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Mutuini Hospital",
+        "abbreviation": "Mutini",
+        "description": "Mutuini Hospital is a hospital located in Nairobi, Kenya.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "MUT2026M1",
+        "data_controllers": "Mutuini Hospital"
+      },
+      {
+        "id": "MUT2026M2",
+        "data_controllers": "Mutuini Hospital"
+      },
+      {
+        "id": "MUT2026M3",
+        "data_controllers": "Mutuini Hospital"
+      },
+      {
+        "id": "MUT2026M4",
+        "data_controllers": "Mutuini Hospital"
+      }
+    ],
+    "contacts": [
+      {
+        "email": "HDS@eepa.be"
+      }
+    ]
+  }, 
+
   "FL1_MOCK": {
-    "catalogues": [{ "title": "FieldLab 7 Mock Catalogue", "publisher": "FieldLab 7" }],
-    "datasets": [{ "title": "Mock Incidents", "routine_queries": ["fl_incidents_by_country"] }],
-    "distributions": [{ "format": "SPARQL 1.1", "auth": "Basic Auth" }],
-    "dashboards": [{ "title": "Mock incidents by country", "query_id": "fl_incidents_by_country" }]
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL1 Mock Incidents",
+      "abbreviation": "FL1_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL1/sparql"
+    },
+    "themes": ["Sexual Violence"],
+    "catalogues": [
+      {
+        "title": "FL1 Mock Catalogue",
+        "abbreviation": "FL1_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Sudanese Organization for Research and Development (SORD)",
+        "abbreviation": "FL1_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL1_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
+  },
+
+  "FL2_MOCK": {
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL2 Mock Incidents",
+      "abbreviation": "FL2_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL2/sparql"
+    },
+    "themes": ["Sexual Violence"],
+    "catalogues": [
+      {
+        "title": "FL2 Mock Catalogue",
+        "abbreviation": "FL2_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Sudanese Organization for Research and Development (SORD)",
+        "abbreviation": "FL2_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL2_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
+  },
+
+  "FL3_MOCK": {
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL3 Mock Incidents",
+      "abbreviation": "FL3_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL3/sparql"
+    },
+    "themes": ["Sexual Violence"],
+    "catalogues": [
+      {
+        "title": "FL3 Mock Catalogue",
+        "abbreviation": "FL3_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Sudanese Organization for Research and Development (SORD)",
+        "abbreviation": "FL3_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL3_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
   }
 }

@@ -22,20 +22,11 @@ def load_queries():
     with open(QUERY_CONFIG_PATH) as q:
         return json.load(q)
 
-'''def load_endpoints():
-    with open(ENDPOINT_CONFIG_PATH) as e:
-        return json.load(e)["organizations"]'''
-
 def load_endpoints():
-    """
-    Load endpoint configs and overlay dynamic health status.
-
-    - Base data (name, endpoint_url, auth_method, topics, etc.) comes from
-      config/endpoints_config.json.
-    - Live status (online/offline/degraded/error) is computed via health_check().
-    """
+    
+    #Load endpoint configs and overlay dynamic health status.    
     with open(ENDPOINT_CONFIG_PATH, encoding="utf-8") as e:
-        orgs = json.load(e)["organizations"]
+        orgs = json.load(e)["platforms"]
 
     # Try to compute live statuses; if anything goes wrong, fall back to config status
     dynamic_status = {}

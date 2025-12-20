@@ -33,7 +33,7 @@ except Exception:
 
 JWT_ALGO = USER_CONFIG.get("jwt", {}).get("algo", "HS256")
 JWT_EXP_MIN = USER_CONFIG.get("jwt", {}).get("expiry_minutes", 360)
-JWT_SECRET = os.getenv("JWT_SECRET_KEY")
+JWT_SECRET = os.getenv(USER_CONFIG.get("jwt", {}).get("secret_env", "JWT_SECRET_KEY"))
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET_KEY not set in environment")
 

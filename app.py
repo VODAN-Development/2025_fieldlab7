@@ -5,9 +5,6 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 from pathlib import Path
-
-#from websockets import route
-
 from mainEngine import merge_count_results
 from endpoint_health_check import health_check
 
@@ -64,18 +61,16 @@ def load_css():
 
 # ---------- App config ----------
 st.set_page_config(page_title="Federated Lighthouse Dashboard", layout="wide")
-#load_css()
 
 # ---------- Auth helpers ----------
 def find_token():
     return st.session_state.get("token")
 
 
-#def auth_headers():
-#    token = find_token()
-#    if token:
-#        return {"Authorization": f"Bearer {token}"}
-#    return {}
+def auth_headers():
+    token = find_token()
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
 @st.cache_data(ttl=60)
 def load_fdp_configs():
     if FDP_CONFIG_PATH.exists():
@@ -117,8 +112,6 @@ def do_logout():
 
 
 # ---------- Data helpers ----------
-#@st.cache_data
-#def fetch_queries_cached(token_present: bool):
 @st.cache_data(ttl=60)
 def fetch_queries_cached():
     try:
@@ -129,10 +122,6 @@ def fetch_queries_cached():
     except Exception:
         return []
 
-
-#def fetch_queries():
-#    token_present = bool(find_token())
-#    return fetch_queries_cached(token_present)
 
 def fetch_queries():
     return fetch_queries_cached()
@@ -148,14 +137,14 @@ def run_query(query_id: str, endpoints: list | None = None):
 
 
 @st.cache_data(ttl=300)
-def load_organizations_static():
-    """Load only static endpoint metadata from config (fast, no network)."""
+def load_platforms_static():
+    """Load only static FieldLab platform endpoints info from config (fast, no network)."""
     if ENDPOINTS_CONFIG_PATH.exists():
         with ENDPOINTS_CONFIG_PATH.open("r", encoding="utf-8") as f:
             cfg = json.load(f)
     else:
         cfg = {}
-    return cfg.get("organizations", {})
+    return cfg.get("platforms", {})
 
 @st.cache_data(ttl=60)
 def load_health_status_map(_refresh_key: int):
@@ -166,10 +155,6 @@ def load_health_status_map(_refresh_key: int):
 def safe_rerun():
     time.sleep(0.1)
     st.rerun()
-
-def auth_headers():
-    token = st.session_state.get("token")
-    return {"Authorization": f"Bearer {token}"} if token else {}
 
 
 def refresh_me():
@@ -263,74 +248,159 @@ def login_view():
                 st.error(f"Login failed: {err}")
 
 
-def render_fdp_modal(org_key: str):
+def render_fdp_modal(platform_key: str):
+    """
+    Render FDP metadata for a selected PLATFORM (application) key.
+    Uses the new platform-keyed fdp_config.json structure.
+    """
     fdp_configs = load_fdp_configs()
-    org_meta = fdp_configs.get(org_key)
+    meta = fdp_configs.get(platform_key)
 
-    @st.dialog(f"FAIR Data Point (metadata) — {org_key}", width="large")
+    @st.dialog(f"FAIR Data Point (metadata) — {platform_key}", width="large")
     def _modal():
-        if not org_meta:
-            st.warning(f"No FDP metadata found for '{org_key}' in fdp_configs.json.")
+        if not meta:
+            st.warning(f"No FDP metadata found for '{platform_key}' in fdp_config.json.")
             return
 
-        # Quick summary top row
-        c1, c2, c3 = st.columns([2, 2, 2])
+        # -------- Application / Platform summary --------
+        app_meta = meta.get("application", {})
+        app_name = app_meta.get("name", platform_key)
+        app_abbr = app_meta.get("abbreviation", platform_key)
+        app_desc = app_meta.get("description", "")
+        app_stored = app_meta.get("stored", "")
+        app_sparql = app_meta.get("sparql_endpoint_url", "")
+
+        st.subheader(app_name)
+        st.caption(f"Platform ID: `{platform_key}`  |  Abbreviation: `{app_abbr}`")
+
+        if app_desc:
+            st.write(app_desc)
+
+        # Small info row
+        c1, c2, c3, c4 = st.columns([2, 2, 2, 4])
         with c1:
-            st.metric("Catalogues", len(org_meta.get("catalogues", [])))
+            st.metric("Catalogues", len(meta.get("catalogues", [])))
         with c2:
-            st.metric("Datasets", len(org_meta.get("datasets", [])))
+            st.metric("Datasets / Providers", len(meta.get("datasets", [])))
         with c3:
-            st.metric("Distributions", len(org_meta.get("distributions", [])))
+            st.metric("Distributions", len(meta.get("distributions", [])))
+        with c4:
+            themes = meta.get("themes", [])
+            if themes:
+                st.write("**Themes**")
+                st.write(", ".join(themes))
+            else:
+                st.write("**Themes**")
+                st.caption("Not specified")
 
         st.markdown("---")
 
-        # Catalogues
+        # -------- Storage & SPARQL endpoint --------
+        st.subheader("Access")
+        if app_stored:
+            st.write(f"**Stored:** {app_stored}")
+        else:
+            st.caption("Stored location not specified.")
+
+        if app_sparql:
+            st.write("**SPARQL endpoint URL:**")
+            st.code(app_sparql, language="text")
+        else:
+            st.info("SPARQL endpoint URL is not set yet for this platform (you can fill it later).")
+
+        st.markdown("---")
+
+        # -------- FDP support / contacts --------
+        st.subheader("Support & Contacts")
+
+        support = meta.get("fdp_support", {})
+        sup_org = support.get("organization", "")
+        sup_contact = support.get("contact_person", "")
+
+        if sup_org or sup_contact:
+            if sup_org:
+                st.write(f"**FDP support:** {sup_org}")
+            if sup_contact:
+                st.write(f"**Contact person:** {sup_contact}")
+        else:
+            st.caption("No FDP support information provided.")
+
+        contacts = meta.get("contacts", [])
+        if contacts:
+            with st.expander("Additional contacts", expanded=False):
+                for c in contacts:
+                    email = c.get("email", "")
+                    if email:
+                        st.write(f"- {email}")
+                    else:
+                        st.write("- (no email provided)")
+        else:
+            st.caption("No additional contacts listed.")
+
+        st.markdown("---")
+
+        # -------- Catalogues --------
         st.subheader("Catalogues")
-        cats = org_meta.get("catalogues", [])
+
+        cats = meta.get("catalogues", [])
         if not cats:
-            st.caption("No catalogues.")
+            st.caption("No catalogues listed.")
         else:
-            for c in cats:
-                with st.expander(c.get("title", "(untitled)"), expanded=False):
-                    if c.get("description"):
-                        st.write(c["description"])
+            for cat in cats:
+                title = cat.get("title", "(untitled catalogue)")
+                abbr = cat.get("abbreviation", "")
+                link = cat.get("link", "")
 
-        # Datasets
-        st.subheader("Datasets")
-        dsets = org_meta.get("datasets", [])
-        if not dsets:
-            st.caption("No datasets.")
+                header = title if not abbr else f"{title} ({abbr})"
+
+                with st.expander(header, expanded=False):
+                    if link:
+                        st.write(f"**Catalogue link:** {link}")
+                    else:
+                        st.caption("Catalogue link not available.")
+
+        st.markdown("---")
+
+        # -------- Datasets / Data providers --------
+        st.subheader("Datasets / Data Providers")
+
+        datasets = meta.get("datasets", [])
+        if not datasets:
+            st.caption("No dataset providers listed.")
         else:
-            for d in dsets:
-                title = d.get("title", "(untitled)")
-                with st.expander(title, expanded=False):
-                    if d.get("description"):
-                        st.write(d["description"])
-                    if d.get("routine_queries"):
-                        st.markdown("**Routine queries**")
-                        st.write(", ".join(f"`{q}`" for q in d["routine_queries"]))
+            for ds in datasets:
+                org_name = ds.get("organization_name", ds.get("title", "(unknown provider)"))
+                ds_abbr = ds.get("abbreviation", "")
+                org_link = ds.get("organization_link", "")
+                ds_desc = ds.get("description", "")
 
-        # Distributions
+                header = org_name if not ds_abbr else f"{org_name} ({ds_abbr})"
+
+                with st.expander(header, expanded=False):
+                    if ds_desc:
+                        st.write(ds_desc)
+                    if org_link:
+                        st.write(f"**Provider link:** {org_link}")
+
+        st.markdown("---")
+
+        # -------- Distributions --------
         st.subheader("Distributions")
-        dists = org_meta.get("distributions", [])
+
+        dists = meta.get("distributions", [])
         if not dists:
-            st.caption("No distributions.")
+            st.caption("No distributions listed.")
         else:
             for dist in dists:
-                with st.expander(dist.get("format", "Distribution"), expanded=False):
-                    st.write(f"**Auth:** {dist.get('auth','-')}")
-                    st.code(dist.get("access_url", ""), language="text")
+                dist_id = dist.get("id", "Distribution")
+                controllers = dist.get("data_controllers", "")
 
-        # Dashboards
-        st.subheader("Dashboards")
-        boards = org_meta.get("dashboards", [])
-        if not boards:
-            st.caption("No dashboards.")
-        else:
-            for b in boards:
-                st.write(f"- **{b.get('title','(untitled)')}** (query: `{b.get('query_id','')}`)")
+                with st.expander(f"{dist_id}", expanded=False):
+                    if controllers:
+                        st.write(f"**Data controller(s):** {controllers}")
+                    else:
+                        st.caption("No data controller information provided.")
 
-        st.markdown("---")
         st.caption("Close this dialog to return to the dashboard.")
 
     _modal()
@@ -362,8 +432,8 @@ def dashboard_view():
         safe_rerun()
         return
     
-    if "selected_org" not in st.session_state:
-        st.session_state.selected_org = None
+    if "selected_platform" not in st.session_state:
+        st.session_state.selected_platform = None
 
 
     left_col, center_col, right_col = st.columns([3, 5, 4])
@@ -428,28 +498,28 @@ def dashboard_view():
 
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # ---- Organization Endpoints card ----
+        # ---- Platform Endpoints card ----
         st.markdown('<div class="fl-card">', unsafe_allow_html=True)
 
         # Header row: title (left) + button (right)
         hdr_l, hdr_r = st.columns([7, 3], vertical_alignment="center")
         with hdr_l:
-            st.markdown("#### Organization Endpoints")
+            st.markdown("#### FieldLab SPARQL Endpoints")
         with hdr_r:
             # right-aligned button
             st.markdown('<div class="hdr-btn-right hdr-icon-btn">', unsafe_allow_html=True)
             refresh_clicked = st.button("🔄", key="refresh_statuses", type="secondary", help="Refresh statuses")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 1) Always load static org list instantly
-        orgs = load_organizations_static()
+        # 1) Always load static platform list instantly
+        platforms = load_platforms_static()
 
         # trigger refresh action
         if refresh_clicked:
             st.session_state["status_refresh_key"] += 1
             safe_rerun()
 
-        # 3) Apply live statuses only if refresh has been triggered at least once
+        # 2) Overlay live statuses (optional)
         status_map = None
         if st.session_state["status_refresh_key"] > 0:
             placeholder = st.empty()
@@ -458,33 +528,33 @@ def dashboard_view():
             status_map = load_health_status_map(st.session_state["status_refresh_key"])
             placeholder.empty()
 
-            # overlay statuses onto orgs
-            for name, data in orgs.items():
+            for name, data in platforms.items():
                 live = status_map.get(name)
                 if live and "status" in live:
                     data["status"] = live["status"]
                 else:
                     data["status"] = data.get("status", "unknown")
         else:
-            # No live check yet → show unknown (fast first render)
-            for name, data in orgs.items():
+            for name, data in platforms.items():
                 data["status"] = data.get("status", "unknown")
 
-        # Filter orgs by selected topic
-        filtered_orgs = {
+        # 3) Filter platforms by selected topic
+        filtered_platforms = {
             key: data
-            for key, data in orgs.items()
+            for key, data in platforms.items()
             if selected_topic_key in data.get("topics", [])
         }
 
-        if st.session_state.selected_org is None and filtered_orgs:
-            for k, d in filtered_orgs.items():
+        # 4) Auto-select an online platform if none selected
+        if st.session_state.selected_platform is None and filtered_platforms:
+            for k, d in filtered_platforms.items():
                 if str(d.get("status", "unknown")).lower() == "online":
-                    st.session_state.selected_org = k
+                    st.session_state.selected_platform = k
                     break
 
-        if filtered_orgs:
-            for key, data in filtered_orgs.items():
+        # 5) Render platform buttons
+        if filtered_platforms:
+            for key, data in filtered_platforms.items():
                 raw_status = data.get("status", "unknown")
                 status = str(raw_status).lower()
 
@@ -497,32 +567,30 @@ def dashboard_view():
                 else:
                     status_class = "status-unknown"
 
-                # clickable organization row
                 row_dot, row_btn = st.columns([0.06, 0.94], gap="small")
 
                 with row_dot:
                     st.markdown(f"<span class='status-dot {status_class}'></span>", unsafe_allow_html=True)
 
                 with row_btn:
-                    is_selected = (st.session_state.selected_org == key)
-                    label = f"✅ {key} ({data.get('type', 'unknown')}) – status: {raw_status}" if is_selected else \
-                            f"{key} ({data.get('type', 'unknown')}) – status: {raw_status}"
+                    # Show a friendly name if present (fallback to key)
+                    display = data.get("name", key)
 
-                    clicked = st.button(label, key=f"orgbtn_{key}", width="stretch", type="tertiary")
+                    label = f"{display}"
+                    clicked = st.button(label, key=f"platbtn_{key}", width="stretch", type="tertiary")
 
                     if clicked:
-                        st.session_state.selected_org = key
+                        st.session_state.selected_platform = key
                         st.session_state["open_fdp_modal"] = True
                         safe_rerun()
-            
-            if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_org"):
+
+            # Open FDP modal for selected platform
+            if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_platform"):
                 st.session_state["open_fdp_modal"] = False
-                render_fdp_modal(st.session_state["selected_org"])
-
-
-
+                render_fdp_modal(st.session_state["selected_platform"])
         else:
-            st.write("No organizations available for this topic.")
+            st.write("No platforms available for this topic.")
+
 
 
         st.markdown("</div>", unsafe_allow_html=True)
@@ -549,11 +617,12 @@ def dashboard_view():
 
             allowed_eps = selected_query.get("allowed_endpoints", [])
             selected_eps = st.multiselect(
-                "Choose organizations to query",
+                "Choose platforms to query",
                 options=allowed_eps,
                 default=allowed_eps,
-                help="Deselect an organization if you want to exclude its data for this query."
+                help="Deselect a platform if you want to exclude its data for this query."
             )
+
 
             # SPARQL preview from file (if available)
             query_file = selected_query.get("query_file")
@@ -671,7 +740,6 @@ def account_view():
         st.session_state["just_changed_route"] = True
         st.session_state["settings_menu_open"] = False
         safe_rerun()
-
 
 
 def admin_view():
@@ -842,8 +910,9 @@ def settings_view():
         else:
             account_view()
 
-if "view" not in st.session_state:
-    st.session_state["view"] = "dashboard"
+    if "view" not in st.session_state:
+        st.session_state["view"] = "dashboard"
+
 
 def main():
     load_css()
@@ -877,7 +946,6 @@ def main():
         st.info("Loading view…")
         safe_rerun()
         return
-
 
     # Render
     if route.startswith("settings_"):

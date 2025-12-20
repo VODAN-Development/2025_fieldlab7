@@ -14,7 +14,7 @@ MINIMAL_SPARQL_QUERY = "ASK { ?s ?p ?o }"
 
 def load_endpoints():
     with open(CONFIG_PATH, encoding="utf-8") as f:
-        return json.load(f)["organizations"]
+        return json.load(f)["platforms"]
 
 
 def classify_status(ok: bool, http_status: int | None, latency: float | None, error: Exception | None):

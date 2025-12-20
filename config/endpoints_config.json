@@ -1,58 +1,85 @@
 {
-  "organizations": {
-    "SORD": {
-      "name": "SORD",
-      "type": "sparql",
-      "endpoint_url": "http://localhost:3030/sord/sparql",
-      "auth_method": "none",
-      "status": "unknown",
-      "topics": ["sexual_violence"],
-      "description": "Local Apache Jena Fuseki endpoint for the Sudan Organized Rape Dataset (SORD) – FieldLab 2, providing aggregated RDF data on sexual violence incidents in Sudan."
-    },
-
-    "DPO": {
-      "name": "DPO",
+  "platforms": {
+    "RPDS": {
+      "name": "RPDS (FAIR-based Refugee Protection Data Systems)",
       "type": "sparql",
       "endpoint_url": "https://ag1jlq2yp82pfp35.allegrograph.cloud/repositories/fieldlab1/sparql",
       "auth_method": "basic",
-      "username_env": "DPO_USERNAME",
-      "password_env": "DPO_PASSWORD",
+      "username_env": "RPDS_USERNAME",
+      "password_env": "RPDS_PASSWORD",
+      "organizations": ["DPO"],
       "status": "unknown",
       "topics": ["refugee"],
-      "description": "The dataset contains structured records of humanitarian incidents"
+      "description": "FieldLab 1 / 1B platform for secure collection of refugee protection data (RPDS)."
     },
 
-    "EEPA": {
-      "name": "EEPA",
+    "RPIS": {
+      "name": "RPIS (Secure FAIR Refugee Protection Information System)",
+      "type": "sparql",
+      "endpoint_url": "",
+      "auth_method": "none",
+      "organizations": ["DPO"],
+      "status": "unknown",
+      "topics": ["refugee"],
+      "description": "FieldLab 4 platform for refugee protection information (RPIS)."
+    },
+
+    "SafeLine": {
+      "name": "SafeLine",
+      "type": "sparql",
+      "endpoint_url": "",
+      "auth_method": "none",
+      "organizations": ["SORD", "KCEI"],
+      "status": "unknown",
+      "topics": ["sexual_violence"],
+      "description": "FieldLab 2 platform for securely collecting sexual violence data (SafeLine)."
+    },
+
+    "ED": {
+      "name": "ED (Emergency Diary: My Secure Data Place)",
+      "type": "sparql",
+      "endpoint_url": "",
+      "auth_method": "none",
+      "organizations": ["Sanctuary Foundation"],
+      "status": "unknown",
+      "topics": ["refugee"],
+      "description": "FieldLab 3 platform providing a secure data place for refugees on the move (Emergency Diary)."
+    },
+
+    "SHTSI": {
+      "name": "SHTSI (SafeVoice: Human Trafficking Source Information)",
       "type": "sparql",
       "endpoint_url": "https://ag1950eewddzjs9z.allegrograph.cloud/repositories/trafficking_repo/sparql",
       "auth_method": "basic",
-      "username_env": "EEPA_USERNAME",
-      "password_env": "EEPA_PASSWORD",
+      "username_env": "SHTSI_USERNAME",
+      "password_env": "SHTSI_PASSWORD",
+      "organizations": ["EEPA"],
       "status": "unknown",
-      "topics": ["human_trafficking"],
-      "description": "Organization providing sensitive human rights data"
+      "topics": ["human_trafficking", "refugee"],
+      "description": "FieldLab 5 platform for securely storing source information related to human trafficking (SafeVoice)."
     },
 
-    "Sanctuary_A": {
-      "name": "Sanctuary A",
+    "HTR": {
+      "name": "HTR (Thinx)",
       "type": "sparql",
-      "endpoint_url": "https://mock-sanctuary.org/sparql",
-      "auth_method": "oauth",
+      "endpoint_url": "",
+      "auth_method": "none",
+      "organizations": ["EEPA"],
       "status": "unknown",
-      "topics": ["refugee"],
-      "description": "Shelter and case data"
+      "topics": ["human_trafficking", "refugee"],
+      "description": "FieldLab 6 platform for research data on human trafficking and refugee protection (Thinx)."
     },
-    
-    "SolidPods": {
-      "name": "Solid Pod Network",
-      "type": "federation",
-      "endpoint_url": "https://mock-comunica.org/query",
-      "auth_method": "delegated",
+
+    "COMPASS": {
+      "name": "COMPASS (Afya.ke EMR Patient Data)",
+      "type": "sparql",
+      "endpoint_url": "",
+      "auth_method": "none",
+      "organizations": ["Mutuini"],
       "status": "unknown",
-      "topics": ["refugee", "human_trafficking", "sexual_violence", "health"],
-      "description": "Federated access to Solid Pods via Comunica"
-    }, 
+      "topics": ["health"],
+      "description": "FieldLab 8 platform to safely store patient data in health clinics (COMPASS)."
+    },
 
     "FL1_MOCK": {
       "name": "FL1 Mock Incidents",
@@ -64,7 +91,7 @@
       "status": "unknown",
       "topics": ["sexual_violence"],
       "description": "Mock AllegroGraph endpoint with fl1-based incident/victim/perpetrator data."
-    }, 
+    },
 
     "FL2_MOCK": {
       "name": "FL2 Mock Incidents",
@@ -76,7 +103,7 @@
       "status": "unknown",
       "topics": ["sexual_violence"],
       "description": "Mock AllegroGraph endpoint with fl2-based incident/victim/perpetrator data."
-    }, 
+    },
 
     "FL3_MOCK": {
       "name": "FL3 Mock Incidents",
