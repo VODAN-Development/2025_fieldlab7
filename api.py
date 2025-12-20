@@ -40,7 +40,11 @@ if not JWT_SECRET:
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-VALID_ROLES = {"admin", "user"}
+SUPER_ADMIN_ROLE = "Super_Admin"
+ADMIN_ROLE = "admin"
+USER_ROLE = "user"
+
+VALID_ROLES = {SUPER_ADMIN_ROLE, ADMIN_ROLE, USER_ROLE}
 VALID_DASHBOARD_ACCESS = {"none", "view", "use"}
 
 
@@ -88,15 +92,24 @@ def find_user(username: str) -> Optional[Dict[str, Any]]:
     return None
 
 def normalize_role(role: Optional[str]) -> str:
-    # Backwards compatibility: map old roles to new ones
     if not role:
-        return "user"
-    role_lower = role.strip().lower()
+        return USER_ROLE
+
+    role_clean = role.strip()
+
+    # Preserve Super Admin role case
+    if role_clean == SUPER_ADMIN_ROLE:
+        return SUPER_ADMIN_ROLE
+
+    role_lower = role_clean.lower()
+
     if role_lower in {"developer", "dev", "administrator"}:
-        return "admin"
-    if role_lower in VALID_ROLES:
+        return ADMIN_ROLE
+
+    if role_lower in {ADMIN_ROLE, USER_ROLE}:
         return role_lower
-    return "user"
+    return USER_ROLE
+
 
 
 def normalize_dashboard_access(value: Optional[str]) -> str:
@@ -162,7 +175,7 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)) ->
 
 def require_admin(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
     role = normalize_role(current_user.get("role"))
-    if role != "admin":
+    if role not in {ADMIN_ROLE, SUPER_ADMIN_ROLE}:
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return current_user
 
@@ -267,10 +280,28 @@ def list_users(_: Dict[str, Any] = Depends(require_admin)):
 
 
 @app.patch("/users/{username}", response_model=PublicUser)
-def update_user(username: str, req: UpdateUserRequest, _: Dict[str, Any] = Depends(require_admin)):
+def update_user(username: str, req: UpdateUserRequest, current_user: Dict[str, Any] = Depends(require_admin)):
     u = find_user(username)
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    current_role = normalize_role(current_user.get("role"))
+    target_role = normalize_role(u.get("role"))
+
+    # Super Admin is immutable unless current user IS Super Admin
+    if target_role == SUPER_ADMIN_ROLE and current_role != SUPER_ADMIN_ROLE:
+        raise HTTPException(
+            status_code=403,
+            detail="Super Admin role cannot be modified"
+        )
+    # Only Super Admin can assign Super Admin role
+    if req.role is not None:
+        requested_role = normalize_role(req.role)
+        if requested_role == SUPER_ADMIN_ROLE and current_role != SUPER_ADMIN_ROLE:
+            raise HTTPException(
+                status_code=403,
+                detail="Only Super Admin can assign Super Admin role"
+            )
 
     if req.role is not None:
         new_role = normalize_role(req.role)

@@ -33,8 +33,8 @@ if "route" not in st.session_state:
 if "settings_menu_open" not in st.session_state:
     st.session_state["settings_menu_open"] = False
 
-if "just_changed_route" not in st.session_state:
-    st.session_state["just_changed_route"] = False
+if "is_transitioning" not in st.session_state:
+    st.session_state["is_transitioning"] = False
 
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
@@ -51,6 +51,12 @@ STYLES_PATH = BASE_DIR / "assets" / "styles.css"
 ENDPOINTS_CONFIG_PATH = Path("config") / "endpoints_config.json"
 FDP_CONFIG_PATH = Path("config") / "fdp_config.json"
 
+ADMIN_ROLES = {"admin", "Super_Admin"}
+
+def normalize_role_ui(role: str) -> str:
+    if role == "Super_Admin":
+        return "Super_Admin"
+    return role.lower()
 
 def load_css():
     if STYLES_PATH.exists():
@@ -92,9 +98,10 @@ def do_login(username: str, password: str):
             "dashboard_access": data.get("dashboard_access", "none")
         }
         st.session_state["logged_in"] = True
-        st.session_state["just_logged_in"] = True
         st.session_state["route"] = "dashboard"
+        start_transition()
         return True, None
+    
     except requests.HTTPError as he:
         try:
             return False, he.response.json().get("detail", str(he))
@@ -106,9 +113,10 @@ def do_login(username: str, password: str):
 
 def do_logout():
     for key in ["token", "user", "logged_in"]:
-        if key in st.session_state:
-            del st.session_state[key]
-    safe_rerun()
+        st.session_state.pop(key, None)
+        
+    start_transition()
+
 
 
 # ---------- Data helpers ----------
@@ -152,8 +160,8 @@ def load_health_status_map(_refresh_key: int):
     return health_check()
 
 
-def safe_rerun():
-    time.sleep(0.1)
+def start_transition():
+    st.session_state["is_transitioning"] = True
     st.rerun()
 
 
@@ -241,9 +249,8 @@ def login_view():
         if submitted:
             ok, err = do_login(username, password)
             if ok:
-                st.success("Login successful.")
-                safe_rerun()
-                st.stop() 
+                # do_login() triggers transition + rerun
+                return 
             else:
                 st.error(f"Login failed: {err}")
 
@@ -407,13 +414,6 @@ def render_fdp_modal(platform_key: str):
 
 
 def dashboard_view():
-    # ---- Post-login transition rerun (prevents old login UI lingering during slow loads)
-    if st.session_state.get("just_logged_in", False):
-        st.session_state["just_logged_in"] = False
-        top_navbar()
-        st.info("Preparing dashboard…")
-        safe_rerun()
-        st.stop()
     
     top_navbar()
     st.markdown("---")
@@ -429,7 +429,7 @@ def dashboard_view():
 
     user = st.session_state.get("user")
     if not user:
-        safe_rerun()
+        start_transition()
         return
     
     if "selected_platform" not in st.session_state:
@@ -465,8 +465,8 @@ def dashboard_view():
             st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
             if st.button("⚙️", key="open_settings", type="secondary", help="Settings"):
                 st.session_state["route"] = "settings_account"
-                st.session_state["just_changed_route"] = True
-                safe_rerun()
+                start_transition()
+
             st.markdown("</div>", unsafe_allow_html=True)
 
         st.write(f"**User:** {display_name}")
@@ -517,7 +517,8 @@ def dashboard_view():
         # trigger refresh action
         if refresh_clicked:
             st.session_state["status_refresh_key"] += 1
-            safe_rerun()
+            st.rerun()
+
 
         # 2) Overlay live statuses (optional)
         status_map = None
@@ -582,7 +583,7 @@ def dashboard_view():
                     if clicked:
                         st.session_state.selected_platform = key
                         st.session_state["open_fdp_modal"] = True
-                        safe_rerun()
+                        st.rerun()
 
             # Open FDP modal for selected platform
             if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_platform"):
@@ -653,7 +654,7 @@ def dashboard_view():
             )
 
             if not can_use:
-                st.info("Your dashboard permission is set to 'view' (or 'none'). Ask an admin to enable 'use' to run queries.")
+                st.info("Your dashboard permission is set to 'view' mode. Ask an admin to enable 'use' mode to run queries.")
 
             if run_clicked:
                 with st.spinner("Running query..."):
@@ -737,17 +738,17 @@ def account_view():
     st.markdown("---")
     if st.button("Back to dashboard", type="secondary"):
         st.session_state["route"] = "dashboard"
-        st.session_state["just_changed_route"] = True
         st.session_state["settings_menu_open"] = False
-        safe_rerun()
+        start_transition()
 
 
 def admin_view():
     refresh_me()
     user = st.session_state.get("user", {})
-    if user.get("role") != "admin":
+    if user.get("role") not in {"admin", "Super_Admin"}:
         st.error("Admin privileges required.")
         return
+
 
     st.markdown("#### Admin controls")
     st.caption("Manage roles and dashboard permissions for users.")
@@ -766,6 +767,7 @@ def admin_view():
 
     access_options = ["none", "view", "use"]
     role_options = ["user", "admin"]
+    
 
     # Track changes locally (session)
     if "pending_user_updates" not in st.session_state:
@@ -777,34 +779,39 @@ def admin_view():
     for u in users:
         username = u["username"]
         col1, col2, col3 = st.columns([3, 2, 2])
+        is_super_admin = u.get("role") == "Super_Admin"
+        is_self = username == st.session_state["user"]["username"]
+        current_role = normalize_role_ui(u.get("role", "user"))
 
         with col1:
-            st.write(f"**{u.get('display_name', username)}**")
+            label = u.get("display_name", username)
+            if is_self:
+                label += " (you)"
+            st.write(f"**{label}**")
+
             st.caption(username)
 
         with col2:
-            new_role = st.selectbox(
-                "Role",
-                role_options,
-                index=role_options.index(u.get("role", "user")),
-                key=f"role_{username}",
-                label_visibility="collapsed"
-            )
+            if is_super_admin or is_self:
+                st.selectbox("Role", [current_role], index=0, key=f"role_{username}", disabled=True, label_visibility="collapsed")
+                new_role = current_role
+            else:
+                new_role = st.selectbox("Role", role_options, index=role_options.index(current_role), key=f"role_{username}", label_visibility="collapsed")
+
 
         with col3:
-            new_access = st.selectbox(
-                "Dashboard",
-                access_options,
-                index=access_options.index(u.get("dashboard_access", "none")),
-                key=f"dash_{username}",
-                label_visibility="collapsed"
-            )
+            if is_super_admin or is_self:
+                st.selectbox("Dashboard", ["use"], index=0, key=f"dash_{username}", disabled=True, label_visibility="collapsed")
+                new_access = "use"
+            else:
+                new_access = st.selectbox("Dashboard", access_options, index=access_options.index(u.get("dashboard_access", "none")), key=f"dash_{username}", label_visibility="collapsed")
 
         # Store only if changed
-        if new_role != u.get("role", "user") or new_access != u.get("dashboard_access", "none"):
-            pending[username] = {"role": new_role, "dashboard_access": new_access}
-        else:
-            pending.pop(username, None)
+        if not is_super_admin and not is_self:
+            if new_role != u.get("role", "user") or new_access != u.get("dashboard_access", "none"):
+                pending[username] = {"role": new_role, "dashboard_access": new_access}
+            else:
+                pending.pop(username, None)
 
     st.markdown("---")
 
@@ -852,19 +859,18 @@ def admin_view():
             st.success(f"Saved {updated} change(s).")
 
         refresh_me()
-        safe_rerun()
+        start_transition()
 
     if back_clicked:
         st.session_state["route"] = "dashboard"
-        st.session_state["just_changed_route"] = True
         st.session_state["settings_menu_open"] = False
-        safe_rerun()
+        start_transition()
 
 
 def settings_view():
     refresh_me()
     user = st.session_state.get("user", {})
-    role = user.get("role", "user")
+    role = normalize_role_ui(user.get("role", "user"))
 
     # Column widths mimic a drawer: narrow when closed, wider when open
     if st.session_state["settings_menu_open"]:
@@ -876,19 +882,17 @@ def settings_view():
     with menu_col:
         if st.button("☰", key="hamburger_settings", type="secondary"):
             st.session_state["settings_menu_open"] = not st.session_state["settings_menu_open"]
-            safe_rerun()
+            start_transition()
 
         if st.session_state["settings_menu_open"]:
             if st.button("Account", key="menu_account", type="secondary"):
                 st.session_state["route"] = "settings_account"
-                st.session_state["just_changed_route"] = True
-                safe_rerun()
+                start_transition()
 
-            if role == "admin":
+            if role in {"admin", "Super_Admin"}:
                 if st.button("Admin", key="menu_admin", type="secondary"):
                     st.session_state["route"] = "settings_admin"
-                    st.session_state["just_changed_route"] = True
-                    safe_rerun()
+                    start_transition()
 
     if divider_col is not None:
         with divider_col:
@@ -901,7 +905,7 @@ def settings_view():
         with hdr[1]:
             if st.button("Logout", type="primary", key="logout_settings"):
                 do_logout()
-                safe_rerun()
+                start_transition()
         st.markdown("---")
 
         route = st.session_state.get("route", "settings_account")
@@ -913,19 +917,45 @@ def settings_view():
     if "view" not in st.session_state:
         st.session_state["view"] = "dashboard"
 
+def render_transition_screen(text="Switching view…"):
+    st.markdown(
+        f"""
+        <div style="
+            position: fixed;
+            inset: 0;
+            background: #0b0f14;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #ccc;
+            z-index: 999999;
+        ">
+            ⏳ {text}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def main():
     load_css()
+
+    if st.session_state.get("is_transitioning"):
+        render_transition_screen()
+        st.session_state["is_transitioning"] = False
+        st.rerun()
+
 
     if not (st.session_state.get("logged_in") or find_token()):
         login_view()
         return
 
     # Ensure we have latest permissions
+    refresh_me()
+    
     user = st.session_state.get("user", {})
     route = st.session_state.get("route", "dashboard")
-    
-    refresh_me()
+
 
 
     # If user has no dashboard access, force them into Settings → Account
@@ -938,14 +968,6 @@ def main():
     # Normalize layout state
     if route == "dashboard":
         st.session_state["settings_menu_open"] = False
-
-    # Smooth route transition guard
-    if st.session_state.get("just_changed_route", False):
-        st.session_state["just_changed_route"] = False
-        top_navbar()
-        st.info("Loading view…")
-        safe_rerun()
-        return
 
     # Render
     if route.startswith("settings_"):
