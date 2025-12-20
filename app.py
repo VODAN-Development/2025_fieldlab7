@@ -36,6 +36,9 @@ if "settings_menu_open" not in st.session_state:
 if "is_transitioning" not in st.session_state:
     st.session_state["is_transitioning"] = False
 
+if "endpoints_initialized" not in st.session_state:
+    st.session_state["endpoints_initialized"] = False
+
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
 BASE_DIR = Path(__file__).resolve().parent
@@ -114,9 +117,11 @@ def do_login(username: str, password: str):
 def do_logout():
     for key in ["token", "user", "logged_in"]:
         st.session_state.pop(key, None)
+    st.session_state.pop("endpoints_initialized", None)
+    st.session_state["last_auto_refresh"] = 0.0
+    st.session_state["status_refresh_key"] = 0
         
     start_transition()
-
 
 
 # ---------- Data helpers ----------
@@ -422,10 +427,10 @@ def dashboard_view():
     AUTO_REFRESH_SECONDS = 600  # 10 minutes
     now = time.time()
 
-    if now - st.session_state["last_auto_refresh"] > AUTO_REFRESH_SECONDS:
-        st.session_state["last_auto_refresh"] = now
-        st.session_state["status_refresh_key"] += 1
-
+    if st.session_state.get("endpoints_initialized"):
+        if now - st.session_state["last_auto_refresh"] > AUTO_REFRESH_SECONDS:
+            st.session_state["last_auto_refresh"] = now
+            st.session_state["status_refresh_key"] += 1
 
     user = st.session_state.get("user")
     if not user:
@@ -511,16 +516,21 @@ def dashboard_view():
             refresh_clicked = st.button("🔄", key="refresh_statuses", type="secondary", help="Refresh statuses")
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # 1) Always load static platform list instantly
+        # load static platform list instantly
         platforms = load_platforms_static()
 
-        # trigger refresh action
+        # Manual refresh trigger
         if refresh_clicked:
             st.session_state["status_refresh_key"] += 1
+            st.session_state["last_auto_refresh"] = time.time()
+            st.session_state["endpoints_initialized"] = True
             st.rerun()
+        # GATE: endpoints not initialized yet
+        if not st.session_state.get("endpoints_initialized"):
+            st.info("Please click the refresh icon above to load available endpoints.")
+            st.stop()
 
-
-        # 2) Overlay live statuses (optional)
+        # Overlay live statuses
         status_map = None
         if st.session_state["status_refresh_key"] > 0:
             placeholder = st.empty()
@@ -539,21 +549,21 @@ def dashboard_view():
             for name, data in platforms.items():
                 data["status"] = data.get("status", "unknown")
 
-        # 3) Filter platforms by selected topic
+        # Filter platforms by selected topic
         filtered_platforms = {
             key: data
             for key, data in platforms.items()
             if selected_topic_key in data.get("topics", [])
         }
 
-        # 4) Auto-select an online platform if none selected
+        # Auto-select an online platform if none selected
         if st.session_state.selected_platform is None and filtered_platforms:
             for k, d in filtered_platforms.items():
                 if str(d.get("status", "unknown")).lower() == "online":
                     st.session_state.selected_platform = k
                     break
 
-        # 5) Render platform buttons
+        # Render platform buttons
         if filtered_platforms:
             for key, data in filtered_platforms.items():
                 raw_status = data.get("status", "unknown")
