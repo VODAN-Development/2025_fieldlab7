@@ -6,6 +6,8 @@ import pandas as pd
 import altair as alt
 from pathlib import Path
 
+#from websockets import route
+
 from mainEngine import merge_count_results
 from endpoint_health_check import health_check
 
@@ -25,11 +27,17 @@ if "user" not in st.session_state:
 if "status_refresh_key" not in st.session_state:
     st.session_state["status_refresh_key"] = 0
 
+if "last_auto_refresh" not in st.session_state:
+    st.session_state["last_auto_refresh"] = 0.0
+
 if "route" not in st.session_state:
     st.session_state["route"] = "dashboard"  # "dashboard" | "settings_account" | "settings_admin"
 
 if "settings_menu_open" not in st.session_state:
     st.session_state["settings_menu_open"] = False
+
+if "just_changed_route" not in st.session_state:
+    st.session_state["just_changed_route"] = False
 
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
@@ -63,12 +71,11 @@ def find_token():
     return st.session_state.get("token")
 
 
-def auth_headers():
-    token = find_token()
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    return {}
-
+#def auth_headers():
+#    token = find_token()
+#    if token:
+#        return {"Authorization": f"Bearer {token}"}
+#    return {}
 @st.cache_data(ttl=60)
 def load_fdp_configs():
     if FDP_CONFIG_PATH.exists():
@@ -110,8 +117,10 @@ def do_logout():
 
 
 # ---------- Data helpers ----------
-@st.cache_data
-def fetch_queries_cached(token_present: bool):
+#@st.cache_data
+#def fetch_queries_cached(token_present: bool):
+@st.cache_data(ttl=60)
+def fetch_queries_cached():
     try:
         headers = auth_headers()
         resp = requests.get(QUERIES_URL, headers=headers, timeout=15)
@@ -121,10 +130,12 @@ def fetch_queries_cached(token_present: bool):
         return []
 
 
-def fetch_queries():
-    token_present = bool(find_token())
-    return fetch_queries_cached(token_present)
+#def fetch_queries():
+#    token_present = bool(find_token())
+#    return fetch_queries_cached(token_present)
 
+def fetch_queries():
+    return fetch_queries_cached()
 
 def run_query(query_id: str, endpoints: list | None = None):
     payload = {"query_id": query_id}
@@ -337,6 +348,15 @@ def dashboard_view():
     top_navbar()
     st.markdown("---")
 
+    # Auto refresh every 10 minutes
+    AUTO_REFRESH_SECONDS = 600  # 10 minutes
+    now = time.time()
+
+    if now - st.session_state["last_auto_refresh"] > AUTO_REFRESH_SECONDS:
+        st.session_state["last_auto_refresh"] = now
+        st.session_state["status_refresh_key"] += 1
+
+
     user = st.session_state.get("user")
     if not user:
         safe_rerun()
@@ -375,6 +395,7 @@ def dashboard_view():
             st.markdown('<div class="hdr-btn-right">', unsafe_allow_html=True)
             if st.button("⚙️", key="open_settings", type="secondary", help="Settings"):
                 st.session_state["route"] = "settings_account"
+                st.session_state["just_changed_route"] = True
                 safe_rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -487,7 +508,7 @@ def dashboard_view():
                     label = f"✅ {key} ({data.get('type', 'unknown')}) – status: {raw_status}" if is_selected else \
                             f"{key} ({data.get('type', 'unknown')}) – status: {raw_status}"
 
-                    clicked = st.button(label, key=f"orgbtn_{key}", use_container_width=True, type="tertiary")
+                    clicked = st.button(label, key=f"orgbtn_{key}", width="stretch", type="tertiary")
 
                     if clicked:
                         st.session_state.selected_org = key
@@ -593,7 +614,7 @@ def dashboard_view():
                                         title="Incidents by Country (Merged Across FL mock endpoints)"
                                     )
                                 )
-                                st.altair_chart(chart, use_container_width=True)
+                                st.altair_chart(chart, width="stretch")
 
                         else:
                             # For all other queries, just show the raw rows per endpoint
@@ -647,7 +668,10 @@ def account_view():
     st.markdown("---")
     if st.button("Back to dashboard", type="secondary"):
         st.session_state["route"] = "dashboard"
+        st.session_state["just_changed_route"] = True
+        st.session_state["settings_menu_open"] = False
         safe_rerun()
+
 
 
 def admin_view():
@@ -764,6 +788,8 @@ def admin_view():
 
     if back_clicked:
         st.session_state["route"] = "dashboard"
+        st.session_state["just_changed_route"] = True
+        st.session_state["settings_menu_open"] = False
         safe_rerun()
 
 
@@ -787,11 +813,13 @@ def settings_view():
         if st.session_state["settings_menu_open"]:
             if st.button("Account", key="menu_account", type="secondary"):
                 st.session_state["route"] = "settings_account"
+                st.session_state["just_changed_route"] = True
                 safe_rerun()
 
             if role == "admin":
                 if st.button("Admin", key="menu_admin", type="secondary"):
                     st.session_state["route"] = "settings_admin"
+                    st.session_state["just_changed_route"] = True
                     safe_rerun()
 
     if divider_col is not None:
@@ -814,7 +842,8 @@ def settings_view():
         else:
             account_view()
 
-
+if "view" not in st.session_state:
+    st.session_state["view"] = "dashboard"
 
 def main():
     load_css()
@@ -824,21 +853,37 @@ def main():
         return
 
     # Ensure we have latest permissions
-    refresh_me()
     user = st.session_state.get("user", {})
     route = st.session_state.get("route", "dashboard")
+    
+    refresh_me()
+
 
     # If user has no dashboard access, force them into Settings → Account
+    # Permission gate
     if user.get("dashboard_access", "none") == "none" and route == "dashboard":
         st.warning("You don’t have dashboard access. Contact an admin to enable it.")
         st.session_state["route"] = "settings_account"
         route = "settings_account"
 
+    # Normalize layout state
+    if route == "dashboard":
+        st.session_state["settings_menu_open"] = False
+
+    # Smooth route transition guard
+    if st.session_state.get("just_changed_route", False):
+        st.session_state["just_changed_route"] = False
+        top_navbar()
+        st.info("Loading view…")
+        safe_rerun()
+        return
+
+
+    # Render
     if route.startswith("settings_"):
         settings_view()
     else:
         dashboard_view()
-
 
 
 if __name__ == "__main__":

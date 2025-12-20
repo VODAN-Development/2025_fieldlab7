@@ -19,6 +19,13 @@
       "password_env": "DASHBOARD_TESTUSER1_PASSWORD",
       "role": "user",
       "display_name": "Test User 1",
+      "dashboard_access": "view"
+    },
+    {
+      "username": "SuperAdmin",
+      "password_env": "DASHBOARD_SUPERADMIN_PASSWORD",
+      "role": "Super_Admin",
+      "display_name": "Super Admin",
       "dashboard_access": "use"
     }
   ],

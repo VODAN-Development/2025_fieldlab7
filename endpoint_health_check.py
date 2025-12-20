@@ -4,6 +4,7 @@ import time
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -108,15 +109,30 @@ def check_endpoint(name: str, cfg: dict) -> dict:
 
 def health_check():
     """
-    Run health checks for all endpoints and return a dict:
+    Run health checks for all endpoints in parallel and return a dict:
         { "SORD": {"status": "...", ...}, "DPO": {...}, ... }
     """
     endpoints = load_endpoints()
     status_map: dict[str, dict] = {}
 
-    for name, cfg in endpoints.items():
-        print(f"Checking {name}...")
-        status_map[name] = check_endpoint(name, cfg)
+    # Adjust workers if needed, 8 is usually enough
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(check_endpoint, name, cfg): name
+            for name, cfg in endpoints.items()
+        }
+
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                status_map[name] = future.result()
+            except Exception as e:
+                status_map[name] = {
+                    "status": "error",
+                    "latency_ms": None,
+                    "http_status": None,
+                    "error": repr(e),
+                }
 
     return status_map
 
