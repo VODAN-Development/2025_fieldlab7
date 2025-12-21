@@ -54,6 +54,15 @@
     "visualization": "bar"
   },
 
+    "fl_incidents_by_gender": {
+    "title": "Mock Victims by Gender",
+    "topic": "sexual_violence",
+    "description": "Aggregated count of victims grouped by gender.",
+    "query_file": "queries/fl_mock/FLmock_victims_by_gender.sparql",
+    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "visualization": "pie"
+  },
+
   "list_all_incidents": {
     "title": "List all refugee incidents",
     "topic": "refugee",

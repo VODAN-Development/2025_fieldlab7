@@ -213,6 +213,17 @@ def top_navbar():
             do_logout()
 
 
+##For right side visualization
+def normalize_gender(val):
+    if not val:
+        return "Unknown"
+    v = str(val).strip().lower()
+    if v in {"female", "f"}:
+        return "Female"
+    if v in {"male", "m"}:
+        return "Male"
+    return "Unknown"
+
 
 def login_view():
 
@@ -675,6 +686,7 @@ def dashboard_view():
                         # 👉 Only use merge_count_results for the FL mock incidents-by-country query
                         if query_id == "fl_incidents_by_country":
                             df = merge_count_results(result, group_var="country")
+                            st.session_state["last_result_df"] = df.copy() ## for right side visualization
 
                             if df.empty:
                                 st.warning("No results returned from any selected endpoint.")
@@ -721,6 +733,7 @@ def dashboard_view():
                                     ]
                                     df = pd.DataFrame(rows)
                                     st.dataframe(df)
+                                    st.session_state["last_result_df"] = df.copy() ## for right side visualization
 
                     except Exception as e:
                         st.error(f"Error running query: {e}")
@@ -731,11 +744,68 @@ def dashboard_view():
     # ---------- RIGHT ----------
     with right_col:
         st.subheader("Visuals for Routine Queries")
-        st.write("Visualizations will appear here once we shape the result data.")
+        df = st.session_state.get("last_result_df")
+        
+        if df is None or df.empty:
+            st.info("Run a query to see summary visuals.")
+            return
+        
+        # ---------- Gender Pie Chart ----------
+        gender_col = None
+        for c in df.columns:
+            if c.lower() == "gender":
+                gender_col = c
+                break
 
-    st.markdown("---")
-    st.caption("Demo dashboard. Use top-right menu to logout.")
+        if gender_col:
+            gender_df = (
+                df[gender_col]
+                .apply(normalize_gender)
+                .value_counts()
+                .reset_index()
+            )
+            gender_df.columns = ["gender", "count"]
 
+        # Fixed color mapping
+            gender_colors = {
+                "Female": "#f7b6d2",   # light pink
+                "Male": "#aec7e8",     # light blue
+                "Unknown": "#c7c7c7"   # neutral grey
+                }
+            
+            chart = (
+                alt.Chart(gender_df)
+                .mark_arc(innerRadius=40)
+                .encode(
+                    theta=alt.Theta(field="count", type="quantitative"),
+                    color=alt.Color(
+                        field="gender",
+                        type="nominal",
+                        scale=alt.Scale(
+                            domain=list(gender_colors.keys()),
+                            range=list(gender_colors.values())
+                            ),
+                        legend=alt.Legend(title="Gender")
+                    ),
+                    tooltip=["gender", "count"]
+                    )
+                    .properties(
+                        title="Victims by Gender"
+                        )
+            )
+
+            st.altair_chart(chart, width="stretch")
+
+        else:
+            st.caption("Gender information not available for this query.")
+
+
+#    with right_col:
+#        st.subheader("Visuals for Routine Queries")
+#        st.write("Visualizations will appear here once we shape the result data.")
+#
+#    st.markdown("---")
+#    st.caption("Demo dashboard. Use top-right menu to logout.")
 
 def account_view():
     refresh_me()
