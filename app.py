@@ -492,6 +492,7 @@ def dashboard_view():
         if now - st.session_state["last_auto_refresh"] > AUTO_REFRESH_SECONDS:
             st.session_state["last_auto_refresh"] = now
             st.session_state["status_refresh_key"] += 1
+            st.session_state.pop("last_result_df", None)
 
     user = st.session_state.get("user")
     if not user:
@@ -785,25 +786,38 @@ def dashboard_view():
                             if not result:
                                 st.warning("No results returned.")
                             else:
+                                all_rows = []
+                                
                                 for endpoint, ep_result in result.items():
                                     st.markdown(f"**Endpoint:** {endpoint}")
-
+                                    
                                     if isinstance(ep_result, dict) and "error" in ep_result:
                                         st.error(f"Error from {endpoint}: {ep_result['error']}")
                                         continue
-
+                                    
                                     bindings = ep_result.get("results", {}).get("bindings", [])
                                     if not bindings:
                                         st.info(f"{endpoint}: no rows.")
                                         continue
-
+                                    
                                     rows = [
-                                        {var: cell.get("value") for var, cell in b.items()}
+                                        {
+                                            "platform": endpoint,
+                                            **{var: cell.get("value") for var, cell in b.items()}
+                                        }
                                         for b in bindings
                                     ]
-                                    df = pd.DataFrame(rows)
-                                    st.dataframe(df)
-                                    st.session_state["last_result_df"] = df.copy() ## for right side visualization
+
+                                    df_ep = pd.DataFrame(rows)
+                                    st.dataframe(df_ep)
+                                    all_rows.append(df_ep)
+                                
+                                #Store ONE combined dataframe
+                                if all_rows:
+                                    st.session_state["last_result_df"] = pd.concat(all_rows, ignore_index=True)
+                                    
+                                else:
+                                    st.session_state["last_result_df"] = pd.DataFrame()
 
                     except Exception as e:
                         st.error(f"Error running query: {e}")
@@ -827,53 +841,49 @@ def dashboard_view():
             return
         
         # ---------- Gender Pie Chart ----------
-        gender_col = None
-        for c in df.columns:
-            if c.lower() == "gender":
-                gender_col = c
-                break
-
-        if gender_col:
+        required_cols = {c.lower() for c in df.columns}
+        if {"gender", "totalvictims"}.issubset(required_cols):
+            col_map = {c.lower(): c for c in df.columns}
+            gender_col = col_map["gender"]
+            count_col = col_map["totalvictims"]
+            
             gender_df = (
-                df[gender_col]
-                .apply(normalize_gender)
-                .value_counts()
-                .reset_index()
+                df[[gender_col, count_col]]
+                .assign(
+                    gender=lambda x: x[gender_col].apply(normalize_gender),
+                    count=lambda x: pd.to_numeric(x[count_col], errors="coerce").fillna(0)
+                )
+                .groupby("gender", as_index=False)["count"]
+                .sum()
             )
-            gender_df.columns = ["gender", "count"]
-
-        # Fixed color mapping
+            
             gender_colors = {
-                "Female": "#f7b6d2",   # light pink
-                "Male": "#aec7e8",     # light blue
-                "Unknown": "#c7c7c7"   # neutral grey
-                }
+                "Female": "#f7b6d2",
+                "Male": "#aec7e8",
+                "Unknown": "#c7c7c7"
+            }
             
             chart = (
                 alt.Chart(gender_df)
                 .mark_arc(innerRadius=40)
                 .encode(
-                    theta=alt.Theta(field="count", type="quantitative"),
+                    theta=alt.Theta("count:Q", title="Victims"),
                     color=alt.Color(
-                        field="gender",
-                        type="nominal",
+                        "gender:N",
                         scale=alt.Scale(
                             domain=list(gender_colors.keys()),
                             range=list(gender_colors.values())
-                            ),
+                        ),
                         legend=alt.Legend(title="Gender")
                     ),
                     tooltip=["gender", "count"]
-                    )
-                    .properties(
-                        title="Victims by Gender"
-                        )
+                )
+                .properties(title="Victims by Gender")
             )
-
             st.altair_chart(chart, width="stretch")
-
-        #else:
-        #    st.caption("Gender information not available for this query.")
+        
+        else:
+            st.caption("Gender information not available for this query.")
 
         # ---------- Grouped Chart for Victims by Age Group ----------
         st.markdown("### Topic Insights")
@@ -911,7 +921,7 @@ def dashboard_view():
                         )
                         .properties(height=320)
                     )
-                    st.altair_chart(chart, use_container_width=True)
+                    st.altair_chart(chart, width="stretch")
         
 
 def account_view():
@@ -1142,7 +1152,6 @@ def main():
     
     user = st.session_state.get("user", {})
     route = st.session_state.get("route", "dashboard")
-
 
 
     # If user has no dashboard access, force them into Settings → Account
