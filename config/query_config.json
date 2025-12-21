@@ -54,7 +54,7 @@
     "visualization": "bar"
   },
 
-    "fl_incidents_by_gender": {
+  "fl_incidents_by_gender": {
     "title": "Mock Victims by Gender",
     "topic": "sexual_violence",
     "description": "Aggregated count of victims grouped by gender.",
@@ -73,20 +73,29 @@
   },
 
   "refugee_incidents_by_type": {
-  "title": "Refugee incidents by type",
-  "topic": "refugee",
-  "description": "Lists all refugee incidents by type.",
-  "query_file": "queries/refugee/incidents_by_type.sparql",
-  "allowed_endpoints": ["RPDS", "RPIS"],
-  "visualization": "bar"
+    "title": "Refugee incidents by type",
+    "topic": "refugee",
+    "description": "Lists all refugee incidents by type.",
+    "query_file": "queries/refugee/incidents_by_type.sparql",
+    "allowed_endpoints": ["RPDS", "RPIS"],
+    "visualization": "bar"
   },
 
   "incidents_by_origin_dest": {
-  "title": "List incidents with departure & destination",
-  "topic": "human_trafficking",
-  "description": "List all human trafficking incidents with departure & destination.",
-  "query_file": "queries/human_trafficking/incidents_by_origin_dest.sparql",
-  "allowed_endpoints": ["SHTSI", "HTR"],
-  "visualization": "bar"
+    "title": "List incidents with departure & destination",
+    "topic": "human_trafficking",
+    "description": "List all human trafficking incidents with departure & destination.",
+    "query_file": "queries/human_trafficking/incidents_by_origin_dest.sparql",
+    "allowed_endpoints": ["SHTSI", "HTR"],
+    "visualization": "bar"
+  },
+
+  "victims_by_age_group": {
+    "title": "Victims by Age Group",
+    "topic": "sexual_violence",
+    "description": "Counts victims grouped by age group (per platform).",
+    "query_file": "queries/sexual_violence/victims_by_age_group.sparql",
+    "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "visualization": "grouped_bar"
   }
 }

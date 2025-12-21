@@ -39,6 +39,12 @@ if "is_transitioning" not in st.session_state:
 if "endpoints_initialized" not in st.session_state:
     st.session_state["endpoints_initialized"] = False
 
+if "last_topic_key" not in st.session_state:
+    st.session_state["last_topic_key"] = None
+
+if "auto_init_done_for_topic" not in st.session_state:
+    st.session_state["auto_init_done_for_topic"] = False
+
 # ---------- Configuration ----------
 API_BASE = "http://127.0.0.1:8000"
 BASE_DIR = Path(__file__).resolve().parent
@@ -182,6 +188,48 @@ def refresh_me():
         return True
     except Exception:
         return False
+    
+
+def sparql_grouped_counts_to_df(results_by_endpoint: dict, group_var: str) -> pd.DataFrame:
+    """
+    Convert multi-endpoint SPARQL COUNT results into a single DataFrame:
+    columns: [platform, <group_var>, count]
+    Expects each endpoint result bindings to include:
+      ?<group_var> and ?count
+    """
+    rows = []
+
+    for platform, payload in (results_by_endpoint or {}).items():
+        if not isinstance(payload, dict) or "error" in payload:
+            continue
+
+        bindings = payload.get("results", {}).get("bindings", [])
+        for b in bindings:
+            if group_var not in b or "count" not in b:
+                continue
+
+            group_value = b[group_var].get("value")
+            count_value = b["count"].get("value")
+
+            try:
+                count_int = int(count_value)
+            except Exception:
+                continue
+
+            rows.append(
+                {"platform": platform, group_var: group_value, "count": count_int}
+            )
+
+    return pd.DataFrame(rows)
+
+
+@st.cache_data(ttl=120)
+def run_fixed_topic_query_cached(query_id: str, refresh_key: int = 0):
+    """
+    Run a fixed topic query with caching so it doesn't re-run on every rerender.
+    refresh_key lets us invalidate the cache when needed (e.g., manual refresh).
+    """
+    return run_query(query_id)
 
 
 # ---------- UI components ----------
@@ -438,7 +486,9 @@ def dashboard_view():
     AUTO_REFRESH_SECONDS = 600  # 10 minutes
     now = time.time()
 
-    if st.session_state.get("endpoints_initialized"):
+    selected_topic_key = st.session_state.get("selected_topic_key", None)
+
+    if st.session_state.get("endpoints_initialized") and selected_topic_key:
         if now - st.session_state["last_auto_refresh"] > AUTO_REFRESH_SECONDS:
             st.session_state["last_auto_refresh"] = now
             st.session_state["status_refresh_key"] += 1
@@ -500,17 +550,32 @@ def dashboard_view():
             "Refugee Data": "refugee",
             "Health Data": "health",
         }
-        topic_labels = list(topic_label_to_key.keys())
+
+        topic_labels = ["Choose a topic"] + list(topic_label_to_key.keys())
 
         topic_label = st.selectbox(
             "Topic",
             topic_labels,
-            index=0,
+            index=0,  # default to Choose a topic
             label_visibility="collapsed",
         )
-        selected_topic_key = topic_label_to_key[topic_label]
-        # store for use in center column
+
+        selected_topic_key = topic_label_to_key.get(topic_label)  # None if "Choose a topic"
         st.session_state["selected_topic_key"] = selected_topic_key
+
+        # Detect topic changes and reset auto-init flag
+        if selected_topic_key != st.session_state.get("last_topic_key"):
+            st.session_state["last_topic_key"] = selected_topic_key
+            st.session_state["auto_init_done_for_topic"] = False
+
+        # Auto-initialize endpoints as soon as a real topic is selected
+        if selected_topic_key and not st.session_state.get("endpoints_initialized") and not st.session_state.get("auto_init_done_for_topic"):
+            st.session_state["status_refresh_key"] += 1
+            st.session_state["last_auto_refresh"] = time.time()
+            st.session_state["endpoints_initialized"] = True
+            st.session_state["auto_init_done_for_topic"] = True
+            st.rerun()
+
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -524,105 +589,110 @@ def dashboard_view():
         with hdr_r:
             # right-aligned button
             st.markdown('<div class="hdr-btn-right hdr-icon-btn">', unsafe_allow_html=True)
-            refresh_clicked = st.button("🔄", key="refresh_statuses", type="secondary", help="Refresh statuses")
+            disable_refresh = (selected_topic_key is None)
+            refresh_clicked = st.button("🔄", key="refresh_statuses", type="secondary", help="Refresh endpoints", disabled=disable_refresh)
             st.markdown("</div>", unsafe_allow_html=True)
+            
+        if selected_topic_key is None:
+            st.info("Choose a topic to use dashboard")
+            st.markdown("</div>", unsafe_allow_html=True)
+        else:
+            # load static platform list instantly
+            platforms = load_platforms_static()
 
-        # load static platform list instantly
-        platforms = load_platforms_static()
+            # Manual refresh trigger
+            if refresh_clicked:
+                st.session_state["status_refresh_key"] += 1
+                st.session_state["last_auto_refresh"] = time.time()
+                st.session_state["endpoints_initialized"] = True
+                st.rerun()
+            if not st.session_state.get("endpoints_initialized"):
+                st.info("Loading endpoints…")
 
-        # Manual refresh trigger
-        if refresh_clicked:
-            st.session_state["status_refresh_key"] += 1
-            st.session_state["last_auto_refresh"] = time.time()
-            st.session_state["endpoints_initialized"] = True
-            st.rerun()
-        # GATE: endpoints not initialized yet
-        if not st.session_state.get("endpoints_initialized"):
-            st.info("Please click the refresh icon above to load available endpoints.")
-            st.stop()
+            # Overlay live statuses
+            status_map = None
+            if st.session_state["status_refresh_key"] > 0:
+                placeholder = st.empty()
+                with placeholder.container():
+                    st.info("Checking endpoint statuses...")
+                status_map = load_health_status_map(st.session_state["status_refresh_key"])
+                placeholder.empty()
 
-        # Overlay live statuses
-        status_map = None
-        if st.session_state["status_refresh_key"] > 0:
-            placeholder = st.empty()
-            with placeholder.container():
-                st.info("Checking endpoint statuses...")
-            status_map = load_health_status_map(st.session_state["status_refresh_key"])
-            placeholder.empty()
-
-            for name, data in platforms.items():
-                live = status_map.get(name)
-                if live and "status" in live:
-                    data["status"] = live["status"]
-                else:
+                for name, data in platforms.items():
+                    live = status_map.get(name)
+                    if live and "status" in live:
+                        data["status"] = live["status"]
+                    else:
+                        data["status"] = data.get("status", "unknown")
+            else:
+                for name, data in platforms.items():
                     data["status"] = data.get("status", "unknown")
-        else:
-            for name, data in platforms.items():
-                data["status"] = data.get("status", "unknown")
 
-        # Filter platforms by selected topic
-        filtered_platforms = {
-            key: data
-            for key, data in platforms.items()
-            if selected_topic_key in data.get("topics", [])
-        }
+            # Filter platforms by selected topic
+            filtered_platforms = {
+                key: data
+                for key, data in platforms.items()
+                if selected_topic_key in data.get("topics", [])
+            }
 
-        # Auto-select an online platform if none selected
-        if st.session_state.selected_platform is None and filtered_platforms:
-            for k, d in filtered_platforms.items():
-                if str(d.get("status", "unknown")).lower() == "online":
-                    st.session_state.selected_platform = k
-                    break
+            # Auto-select an online platform if none selected
+            if st.session_state.selected_platform is None and filtered_platforms:
+                for k, d in filtered_platforms.items():
+                    if str(d.get("status", "unknown")).lower() == "online":
+                        st.session_state.selected_platform = k
+                        break
 
-        # Render platform buttons
-        if filtered_platforms:
-            for key, data in filtered_platforms.items():
-                raw_status = data.get("status", "unknown")
-                status = str(raw_status).lower()
+            # Render platform buttons
+            if filtered_platforms:
+                for key, data in filtered_platforms.items():
+                    raw_status = data.get("status", "unknown")
+                    status = str(raw_status).lower()
 
-                if status == "online":
-                    status_class = "status-online"
-                elif status in ("offline", "error"):
-                    status_class = "status-offline"
-                elif status == "degraded":
-                    status_class = "status-degraded"
-                else:
-                    status_class = "status-unknown"
+                    if status == "online":
+                        status_class = "status-online"
+                    elif status in ("offline", "error"):
+                        status_class = "status-offline"
+                    elif status == "degraded":
+                        status_class = "status-degraded"
+                    else:
+                        status_class = "status-unknown"
 
-                row_dot, row_btn = st.columns([0.06, 0.94], gap="small")
+                    row_dot, row_btn = st.columns([0.06, 0.94], gap="small")
 
-                with row_dot:
-                    st.markdown(f"<span class='status-dot {status_class}'></span>", unsafe_allow_html=True)
+                    with row_dot:
+                        st.markdown(f"<span class='status-dot {status_class}'></span>", unsafe_allow_html=True)
 
-                with row_btn:
-                    # Show a friendly name if present (fallback to key)
-                    display = data.get("name", key)
+                    with row_btn:
+                        # Show a friendly name if present (fallback to key)
+                        display = data.get("name", key)
 
-                    label = f"{display}"
-                    clicked = st.button(label, key=f"platbtn_{key}", width="stretch", type="tertiary")
+                        label = f"{display}"
+                        clicked = st.button(label, key=f"platbtn_{key}", width="stretch", type="tertiary")
 
-                    if clicked:
-                        st.session_state.selected_platform = key
-                        st.session_state["open_fdp_modal"] = True
-                        st.rerun()
+                        if clicked:
+                            st.session_state.selected_platform = key
+                            st.session_state["open_fdp_modal"] = True
+                            st.rerun()
 
-            # Open FDP modal for selected platform
-            if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_platform"):
-                st.session_state["open_fdp_modal"] = False
-                render_fdp_modal(st.session_state["selected_platform"])
-        else:
-            st.write("No platforms available for this topic.")
-
-
-
-        st.markdown("</div>", unsafe_allow_html=True)
+                # Open FDP modal for selected platform
+                if st.session_state.get("open_fdp_modal") and st.session_state.get("selected_platform"):
+                    st.session_state["open_fdp_modal"] = False
+                    render_fdp_modal(st.session_state["selected_platform"])
+            else:
+                st.write("No platforms available for this topic.")
+                
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # ---------- CENTER ----------
     with center_col:
         st.subheader("Proposed Queries")
 
         queries = fetch_queries()
-        current_topic_key = st.session_state.get("selected_topic_key", "sexual_violence")
+        current_topic_key = st.session_state.get("selected_topic_key", None)
+        if not current_topic_key:
+            st.info("Choose a topic to see routine queries.")
+            return
+        
         filtered_queries = [q for q in queries if q.get("topic") == current_topic_key]
         query_titles = {q["title"]: q for q in filtered_queries} if filtered_queries else {}
 
@@ -743,6 +813,12 @@ def dashboard_view():
 
     # ---------- RIGHT ----------
     with right_col:
+
+        current_topic_key = st.session_state.get("selected_topic_key", None)
+        if not current_topic_key:
+            st.info("Choose a topic to see routine queries.")
+            return
+        
         st.subheader("Visuals for Routine Queries")
         df = st.session_state.get("last_result_df")
         
@@ -796,16 +872,47 @@ def dashboard_view():
 
             st.altair_chart(chart, width="stretch")
 
-        else:
-            st.caption("Gender information not available for this query.")
+        #else:
+        #    st.caption("Gender information not available for this query.")
 
+        # ---------- Grouped Chart for Victims by Age Group ----------
+        st.markdown("### Topic Insights")
+        
+        if selected_topic_key == "sexual_violence":
+            st.markdown("#### Sexual Violence Victims by Age Group")
 
-#    with right_col:
-#        st.subheader("Visuals for Routine Queries")
-#        st.write("Visualizations will appear here once we shape the result data.")
-#
-#    st.markdown("---")
-#    st.caption("Demo dashboard. Use top-right menu to logout.")
+            can_use = (st.session_state.get("user", {}).get("dashboard_access") == "use")
+            if not can_use:
+                st.info("You don’t have permission to run queries. Please login with a user that has query access.")
+            else:
+                # Always visible chart: run its routine query independent of dropdown selection
+                # Uses allowed_endpoints from query_config.json automatically.
+                try:
+                    # Tie cache invalidation to status_refresh_key so a manual refresh can also refresh this chart
+                    results = run_fixed_topic_query_cached("victims_by_age_group", st.session_state.get("status_refresh_key", 0))
+                except Exception as e:
+                    st.error(f"Could not run fixed chart query: {e}")
+                    results = {}
+
+                df_age = sparql_grouped_counts_to_df(results, group_var="ageGroup")
+
+                if df_age.empty:
+                    st.info("No age-group data returned from the configured platforms.")
+                else:
+                    chart = (
+                        alt.Chart(df_age)
+                        .mark_bar()
+                        .encode(
+                            x=alt.X("ageGroup:N", title="Age group"),
+                            xOffset="platform:N",
+                            y=alt.Y("count:Q", title="Victims"),
+                            color=alt.Color("platform:N", title="Platform"),
+                            tooltip=["platform", "ageGroup", "count"]
+                        )
+                        .properties(height=320)
+                    )
+                    st.altair_chart(chart, use_container_width=True)
+        
 
 def account_view():
     refresh_me()

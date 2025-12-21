@@ -1,0 +1,9 @@
+PREFIX hds: <http://example.org/hds#>
+
+SELECT ?ageGroup (COUNT(?victim) AS ?count)
+WHERE {
+  ?victim a hds:Victim ;
+          hds:ageGroup ?ageGroup .
+}
+GROUP BY ?ageGroup
+ORDER BY ?ageGroup
