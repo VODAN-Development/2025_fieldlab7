@@ -63,6 +63,42 @@
     "visualization": "pie"
   },
 
+  "fl_incidents_by_country_dest": {
+    "title": "Mock List incidents with country",
+    "topic": "human_trafficking",
+    "description": "List all human trafficking incidents with country.",
+    "query_file": "queries/human_trafficking/incidents_by_country_dest.sparql",
+    "allowed_endpoints": ["FL5_MOCK", "FL6_MOCK"],
+    "visualization": "bar"
+  },
+
+  "flm_incidents_by_gender": {
+    "title": "Mock List incidents with gender",
+    "topic": "human_trafficking",
+    "description": "List all human trafficking incidents with gender.",
+    "query_file": "queries/human_trafficking/incidents_by_gender.sparql",
+    "allowed_endpoints": ["FL5_MOCK", "FL6_MOCK"],
+    "visualization": "bar"
+  },
+
+  "flmr_incidents_by_country": {
+    "title": "Mock List incidents with country",
+    "topic": "refugee",
+    "description": "List all human trafficking incidents with country.",
+    "query_file": "queries/refugee/FLmock_incidents_by_country.sparql",
+    "allowed_endpoints": ["FL11_MOCK"],
+    "visualization": "bar"
+  },
+
+  "flmr_incidents_by_gender": {
+    "title": "Mock List incidents with gender",
+    "topic": "refugee",
+    "description": "List all human trafficking incidents with gender.",
+    "query_file": "queries/refugee/FLmock_incidents_by_gender.sparql",
+    "allowed_endpoints": ["FL11_MOCK"],
+    "visualization": "bar"
+  },
+
   "list_all_incidents": {
     "title": "List all refugee incidents",
     "topic": "refugee",

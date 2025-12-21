@@ -1,0 +1,22 @@
+PREFIX hds: <http://example.org/hds#>
+
+SELECT ?country (COUNT(DISTINCT ?incident) AS ?count)
+WHERE {
+  ?incident a hds:Incident .
+
+  # --- Handle location: both use hds:location ---
+  ?incident hds:location ?locationStr .
+  BIND(STRAFTER(?locationStr, ", ") AS ?country)
+
+  # --- Handle incident type via UNION over possible properties ---
+  {
+    ?incident hds:incidentType ?type .
+  } UNION {
+    ?incident hds:type ?type .
+  }
+
+  # Normalize and filter for trafficking-related keywords
+  FILTER(REGEX(LCASE(STR(?type)), "traffick|smuggl|exploit|labour|forced|recruit|abduct|prostitut|marriage"))
+}
+GROUP BY ?country
+ORDER BY DESC(?count)

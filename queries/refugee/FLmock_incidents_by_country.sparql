@@ -1,0 +1,16 @@
+PREFIX ex: <http://example.org/hds#>
+
+SELECT ?country (COUNT(?victim) AS ?count)
+WHERE {
+  ?incident a ex:Incident ;
+            ex:hasVictim ?victim ;
+            ex:location ?locationStr .
+
+  # Extract country from "City, Country" format
+  BIND(STRAFTER(?locationStr, ", ") AS ?country)
+
+  # Exclude rows where country extraction failed
+  FILTER(STRLEN(?country) > 0)
+}
+GROUP BY ?country
+ORDER BY DESC(?count)

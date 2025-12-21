@@ -1,0 +1,20 @@
+PREFIX hds: <http://example.org/hds#>
+
+SELECT ?gender (COUNT(?victim) AS ?totalVictims)
+WHERE {
+  ?victim a hds:Victim ;
+          hds:gender ?rawGender .
+
+  BIND(
+    IF(
+      LCASE(STR(?rawGender)) = "f" || LCASE(STR(?rawGender)) = "female",
+      "Female",
+      IF(
+        LCASE(STR(?rawGender)) = "m" || LCASE(STR(?rawGender)) = "male",
+        "Male",
+        "Unknown"
+      )
+    ) AS ?gender
+  )
+}
+GROUP BY ?gender

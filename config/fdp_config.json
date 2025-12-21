@@ -473,5 +473,125 @@
     "contacts": [
       { "email": "" }
     ]
+  },
+
+  "FL5_MOCK": {
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL5 Mock Incidents",
+      "abbreviation": "FL5_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL5/sparql"
+    },
+    "themes": ["Human Trafficking"],
+    "catalogues": [
+      {
+        "title": "FL5 Mock Catalogue",
+        "abbreviation": "FL5_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Europe External Programme with Africa (EEPA)",
+        "abbreviation": "FL5_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL5_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
+  },
+
+  "FL11_MOCK": {
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL11 Mock Incidents",
+      "abbreviation": "FL11_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL11/sparql"
+    },
+    "themes": ["Refugee Data"],
+    "catalogues": [
+      {
+        "title": "FL11 Mock Catalogue",
+        "abbreviation": "FL11_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Development for Peace Organization (DPO)",
+        "abbreviation": "FL11_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL11_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
+  },
+
+  "FL6_MOCK": {
+    "fieldlabs": ["FieldLab 7"],
+    "fdp_support": {
+      "organization": "FieldLab 7 (mock/testing)",
+      "contact_person": ""
+    },
+    "application": {
+      "name": "FL6 Mock Incidents",
+      "abbreviation": "FL6_MOCK",
+      "description": "Mock SPARQL endpoint used for testing federated queries and UI components.",
+      "stored": "AllegroGraph Cloud (mock)",
+      "sparql_endpoint_url": "https://ag1mdzaeq7qnj00h.allegrograph.cloud/repositories/FL6/sparql"
+    },
+    "themes": ["Human Trafficking"],
+    "catalogues": [
+      {
+        "title": "FL6 Mock Catalogue",
+        "abbreviation": "FL6_MOCK",
+        "link": ""
+      }
+    ],
+    "datasets": [
+      {
+        "organization_name": "Europe External Programme with Africa (EEPA)",
+        "abbreviation": "FL6_MOCK",
+        "description": "Synthetic incident data used for development/testing only.",
+        "organization_link": ""
+      }
+    ],
+    "distributions": [
+      {
+        "id": "FL6_MOCK_DIST",
+        "data_controllers": "FieldLab 7"
+      }
+    ],
+    "contacts": [
+      { "email": "" }
+    ]
   }
 }
