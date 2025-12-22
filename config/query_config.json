@@ -64,7 +64,7 @@
   },
 
   "fl_incidents_by_country_dest": {
-    "title": "Mock List incidents with country",
+    "title": "Mock List incidents by country",
     "topic": "human_trafficking",
     "description": "List all human trafficking incidents with country.",
     "query_file": "queries/human_trafficking/incidents_by_country_dest.sparql",
@@ -73,16 +73,16 @@
   },
 
   "flm_incidents_by_gender": {
-    "title": "Mock List incidents with gender",
+    "title": "Mock List incidents by gender",
     "topic": "human_trafficking",
     "description": "List all human trafficking incidents with gender.",
     "query_file": "queries/human_trafficking/incidents_by_gender.sparql",
     "allowed_endpoints": ["FL5_MOCK", "FL6_MOCK"],
-    "visualization": "bar"
+    "visualization": "pie"
   },
 
   "flmr_incidents_by_country": {
-    "title": "Mock List incidents with country",
+    "title": "Mock List incidents by country",
     "topic": "refugee",
     "description": "List all human trafficking incidents with country.",
     "query_file": "queries/refugee/FLmock_incidents_by_country.sparql",
@@ -91,12 +91,12 @@
   },
 
   "flmr_incidents_by_gender": {
-    "title": "Mock List incidents with gender",
+    "title": "Mock List incidents by gender",
     "topic": "refugee",
     "description": "List all human trafficking incidents with gender.",
     "query_file": "queries/refugee/FLmock_incidents_by_gender.sparql",
     "allowed_endpoints": ["FL11_MOCK"],
-    "visualization": "bar"
+    "visualization": "pie"
   },
 
   "list_all_incidents": {
@@ -126,12 +126,30 @@
     "visualization": "bar"
   },
 
-  "victims_by_age_group": {
-    "title": "Victims by Age Group",
+  "sv_victims_by_age_group": {
+    "title": "Sexual Violence Victims by Age Group",
     "topic": "sexual_violence",
-    "description": "Counts victims grouped by age group (per platform).",
-    "query_file": "queries/sexual_violence/victims_by_age_group.sparql",
+    "description": "Counts sexual violence victims grouped by age group (per platform).",
+    "query_file": "queries/constant_queries/victims_by_age_group.sparql",
     "allowed_endpoints": ["FL1_MOCK", "FL2_MOCK", "FL3_MOCK"],
+    "visualization": "grouped_bar"
+  },
+
+  "ht_victims_by_age_group": {
+    "title": "Human Trafficking Victims by Age Group",
+    "topic": "human_trafficking",
+    "description": "Counts human trafficking victims grouped by age group (per platform).",
+    "query_file": "queries/constant_queries/victims_by_age_group.sparql",
+    "allowed_endpoints": ["FL5_MOCK", "FL6_MOCK"],
+    "visualization": "grouped_bar"
+  },
+
+  "ref_victims_by_age_group": {
+    "title": "Refugee Victims by Age Group",
+    "topic": "refugee",
+    "description": "Counts refugee victims grouped by age group (per platform).",
+    "query_file": "queries/constant_queries/victims_by_age_group.sparql",
+    "allowed_endpoints": ["FL11_MOCK"],
     "visualization": "grouped_bar"
   }
 }

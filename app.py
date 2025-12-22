@@ -188,14 +188,19 @@ def refresh_me():
         return True
     except Exception:
         return False
-    
 
-def sparql_grouped_counts_to_df(results_by_endpoint: dict, group_var: str) -> pd.DataFrame:
+
+def sparql_counts_to_df(
+    results_by_endpoint: dict,
+    group_var: str,
+    count_vars: tuple[str, ...] = ("count", "totalVictims", "total_count")
+) -> pd.DataFrame:
     """
-    Convert multi-endpoint SPARQL COUNT results into a single DataFrame:
-    columns: [platform, <group_var>, count]
-    Expects each endpoint result bindings to include:
-      ?<group_var> and ?count
+    Generic converter for multi-endpoint SPARQL aggregation results.
+    Returns DataFrame with columns: [platform, <group_var>, count]
+
+    - group_var: SPARQL variable name (e.g., "ageGroup", "gender", "country")
+    - count_vars: possible names for the numeric aggregation field
     """
     rows = []
 
@@ -205,20 +210,23 @@ def sparql_grouped_counts_to_df(results_by_endpoint: dict, group_var: str) -> pd
 
         bindings = payload.get("results", {}).get("bindings", [])
         for b in bindings:
-            if group_var not in b or "count" not in b:
+            if group_var not in b:
+                continue
+
+            # find the numeric count var in the binding
+            count_key = next((k for k in count_vars if k in b), None)
+            if not count_key:
                 continue
 
             group_value = b[group_var].get("value")
-            count_value = b["count"].get("value")
+            count_value = b[count_key].get("value")
 
             try:
-                count_int = int(count_value)
+                count_int = int(float(count_value))
             except Exception:
                 continue
 
-            rows.append(
-                {"platform": platform, group_var: group_value, "count": count_int}
-            )
+            rows.append({"platform": platform, group_var: group_value, "count": count_int})
 
     return pd.DataFrame(rows)
 
@@ -755,7 +763,12 @@ def dashboard_view():
                         result = run_query(query_id, selected_eps)
 
                         # 👉 Only use merge_count_results for the FL mock incidents-by-country query
-                        if query_id == "fl_incidents_by_country":
+                        if query_id in {
+                            "fl_incidents_by_country",
+                            "fl_incidents_by_country_dest",
+                            "flmr_incidents_by_country",
+                        }:
+
                             df = merge_count_results(result, group_var="country")
                             st.session_state["last_result_df"] = df.copy() ## for right side visualization
 
@@ -827,101 +840,134 @@ def dashboard_view():
 
     # ---------- RIGHT ----------
     with right_col:
-
         current_topic_key = st.session_state.get("selected_topic_key", None)
         if not current_topic_key:
-            st.info("Choose a topic to see routine queries.")
+            st.info("Choose a topic to see insights.")
             return
+
+        topic_label_to_key = {
+            "Sexual Violence": "sexual_violence",
+            "Human Trafficking": "human_trafficking",
+            "Refugee Data": "refugee",
+            "Health Data": "health",
+        }
+
+        topic_key_to_label = {v: k for k, v in topic_label_to_key.items()}
+
+        INSIGHTS = {
+            "sexual_violence": {
+                "age_query_id": "sv_victims_by_age_group",
+                "gender_query_id": "fl_incidents_by_gender",  # your current SV mock gender pie
+            },
+            "human_trafficking": {
+                "age_query_id": "ht_victims_by_age_group",     # new config entry
+                "gender_query_id": "flm_incidents_by_gender",  # provided by teammate
+            },
+            "refugee": {
+                "age_query_id": "ref_victims_by_age_group",    # new config entry
+                "gender_query_id": "flmr_incidents_by_gender", # provided by teammate
+            },
+        }
+
+        topic_cfg = INSIGHTS.get(current_topic_key)
+        topic_label = topic_key_to_label.get(current_topic_key, "Unknown Topic")
         
-        st.subheader("Visuals for Routine Queries")
-        df = st.session_state.get("last_result_df")
-        
-        if df is None or df.empty:
-            st.info("Run a query to see summary visuals.")
-            return
-        
-        # ---------- Gender Pie Chart ----------
-        required_cols = {c.lower() for c in df.columns}
-        if {"gender", "totalvictims"}.issubset(required_cols):
-            col_map = {c.lower(): c for c in df.columns}
-            gender_col = col_map["gender"]
-            count_col = col_map["totalvictims"]
-            
-            gender_df = (
-                df[[gender_col, count_col]]
-                .assign(
-                    gender=lambda x: x[gender_col].apply(normalize_gender),
-                    count=lambda x: pd.to_numeric(x[count_col], errors="coerce").fillna(0)
-                )
-                .groupby("gender", as_index=False)["count"]
-                .sum()
-            )
-            
-            gender_colors = {
-                "Female": "#f7b6d2",
-                "Male": "#aec7e8",
-                "Unknown": "#c7c7c7"
-            }
-            
-            chart = (
-                alt.Chart(gender_df)
-                .mark_arc(innerRadius=40)
-                .encode(
-                    theta=alt.Theta("count:Q", title="Victims"),
-                    color=alt.Color(
-                        "gender:N",
-                        scale=alt.Scale(
-                            domain=list(gender_colors.keys()),
-                            range=list(gender_colors.values())
-                        ),
-                        legend=alt.Legend(title="Gender")
-                    ),
-                    tooltip=["gender", "count"]
-                )
-                .properties(title="Victims by Gender")
-            )
-            st.altair_chart(chart, width="stretch")
-        
+        # =========================
+        # 1) ALWAYS-VISIBLE TOPIC INSIGHTS
+        # =========================
+        st.subheader("Topic Insights")
+
+        can_use = (st.session_state.get("user", {}).get("dashboard_access") == "use")
+        refresh_key = st.session_state.get("status_refresh_key", 0)
+
+        if not topic_cfg:
+            st.caption("No fixed topic insights configured for this topic yet.")
+        elif not can_use:
+            st.info("You don’t have permission to run queries. Please login with a user that has query access.")
         else:
-            st.caption("Gender information not available for this query.")
+            # ---------- Age Group grouped bar ----------
+            st.markdown(f"#### {topic_label} Victims by Age Group (by platform)")
 
-        # ---------- Grouped Chart for Victims by Age Group ----------
-        st.markdown("### Topic Insights")
-        
-        if selected_topic_key == "sexual_violence":
-            st.markdown("#### Sexual Violence Victims by Age Group")
-
-            can_use = (st.session_state.get("user", {}).get("dashboard_access") == "use")
-            if not can_use:
-                st.info("You don’t have permission to run queries. Please login with a user that has query access.")
-            else:
-                # Always visible chart: run its routine query independent of dropdown selection
-                # Uses allowed_endpoints from query_config.json automatically.
-                try:
-                    # Tie cache invalidation to status_refresh_key so a manual refresh can also refresh this chart
-                    results = run_fixed_topic_query_cached("victims_by_age_group", st.session_state.get("status_refresh_key", 0))
-                except Exception as e:
-                    st.error(f"Could not run fixed chart query: {e}")
-                    results = {}
-
-                df_age = sparql_grouped_counts_to_df(results, group_var="ageGroup")
-
-                if df_age.empty:
-                    st.info("No age-group data returned from the configured platforms.")
+            try:
+                if topic_cfg["age_query_id"] not in {q["id"] for q in fetch_queries()}:
+                    st.error("Configured age-group query not found in query_config.json")
                 else:
-                    chart = (
-                        alt.Chart(df_age)
-                        .mark_bar()
-                        .encode(
-                            x=alt.X("ageGroup:N", title="Age group"),
-                            xOffset="platform:N",
-                            y=alt.Y("count:Q", title="Victims"),
-                            color=alt.Color("platform:N", title="Platform"),
-                            tooltip=["platform", "ageGroup", "count"]
-                        )
-                        .properties(height=320)
+                    age_results = run_fixed_topic_query_cached(topic_cfg["age_query_id"], refresh_key)
+            except Exception as e:
+                st.error(f"Could not run {topic_cfg['age_query_id']}: {e}")
+                age_results = {}
+
+            df_age = sparql_counts_to_df(age_results, group_var="ageGroup")
+
+            if df_age.empty:
+                st.info("No age-group data returned from the configured platforms.")
+            else:
+                age_chart = (
+                    alt.Chart(df_age)
+                    .mark_bar()
+                    .encode(
+                        x=alt.X("ageGroup:N", title="Age group"),
+                        xOffset="platform:N",
+                        y=alt.Y("count:Q", title="Victims"),
+                        color=alt.Color("platform:N", title="Platform"),
+                        tooltip=["platform", "ageGroup", "count"],
                     )
-                    st.altair_chart(chart, width="stretch")
+                    .properties(height=300)
+                )
+                st.altair_chart(age_chart, width="stretch")
+
+            st.markdown("---")
+
+            # ---------- Gender pie ----------
+            st.markdown(f"#### {topic_label} Incidents / Victims by Gender")
+
+            try:
+                gender_results = run_fixed_topic_query_cached(topic_cfg["gender_query_id"], refresh_key)
+            except Exception as e:
+                st.error(f"Could not run {topic_cfg['gender_query_id']}: {e}")
+                gender_results = {}
+
+            df_gender = sparql_counts_to_df(gender_results, group_var="gender")
+
+            if df_gender.empty:
+                st.info("No gender data returned from the configured platforms.")
+            else:
+                # aggregate across platforms for a single pie
+                gender_df = (
+                    df_gender.assign(
+                        gender=lambda x: x["gender"].apply(normalize_gender),
+                        count=lambda x: pd.to_numeric(x["count"], errors="coerce").fillna(0),
+                    )
+                    .groupby("gender", as_index=False)["count"]
+                    .sum()
+                )
+
+                gender_colors = {
+                    "Female": "#FFB5B5",
+                    "Male": "#0072CE",
+                    "Unknown": "#c7c7c7",
+                }
+
+                gender_chart = (
+                    alt.Chart(gender_df)
+                    .mark_arc(innerRadius=40)
+                    .encode(
+                        theta=alt.Theta("count:Q", title="Count"),
+                        color=alt.Color(
+                            "gender:N",
+                            title="Gender",
+                            scale=alt.Scale(
+                                domain=list(gender_colors.keys()),
+                                range=list(gender_colors.values()),
+                            ),
+                        ),
+                        tooltip=["gender", "count"],
+                    )
+                    .properties(height=300)
+                )
+                st.altair_chart(gender_chart, width="stretch")
+
+        st.markdown("---")
         
 
 def account_view():
