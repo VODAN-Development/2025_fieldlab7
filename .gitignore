@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 .streamlit/
 .env
-config/backup/
 bin/
 etc/
 lib/

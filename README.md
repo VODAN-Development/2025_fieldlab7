@@ -18,7 +18,7 @@ The system consists of three main components:
   Exposes endpoints for listing available queries and executing selected queries.
 
 - **Frontend Dashboard (Streamlit)**  
-  Provides a user interface to select topics, choose routine queries, and view query results.
+  Provides a user interface to select data topics, automatically load relevant platforms, visualize topic-specific insights, and optionally execute predefined routine SPARQL queries.
 
 ---
 
@@ -46,7 +46,16 @@ The system consists of three main components:
 3. **Federated Endpoint Availability**  
    Query results depend on the availability and responsiveness of the configured SPARQL endpoints. Temporary endpoint downtime or network issues may affect query execution and returned results.
 
-4. **Development Status**  
+4. **FAIR Data Point (FDP) Metadata Integration**
+   The dashboard integrates FAIR Data Point–aligned metadata through a local configuration (`fdp_config.json`). This metadata describes applications, datasets, catalogues, distributions and data providers associated with each SPARQL platform. FDP metadata is presented in the UI to provide context, provenance, and governance information alongside query results, without directly querying FDP APIs.
+
+5. **Endpoint Health Monitoring**
+   The system performs lightweight health checks on configured SPARQL endpoints to determine availability before query execution. Endpoint status is reflected in the UI and helps prevent execution against offline platforms.
+
+6. **User Authentication and Roles**
+   Access to the dashboard is restricted to authenticated users. User roles (e.g., admin, user) control access to administrative functionality such as user and permission management. Authentication details are defined in configuration and secured through environment variables.
+
+7. **Development Status**  
    This project is a prototype developed in the context of FieldLab 7. Some features, configurations, or integrations may be incomplete or subject to change as the project evolves.
 
 ---
@@ -89,6 +98,7 @@ DSIP_FIELDLAB7_DEV/
 │   └── user_config.json      # User-level configuration
 │
 ├── queries/                   # SPARQL query collections
+│   ├── constant_queries/
 │   ├── fl_mock/
 │   ├── human_trafficking/
 │   ├── refugee/
